@@ -11,6 +11,9 @@
 - 新增 6 个测试：分页接口、stream 响应格式、标点分词、expand_query 边界、.env 加载检查
 - 测试从 27 升至 33 个
 
+### 文档修正
+- README：补充 `LLM_PROVIDER`、`ENABLE_QUERY_REWRITE` 配置项，修正 LLM 描述（支持 DeepSeek/Ollama）、Docker Windows 命令、过时的项目结构
+
 ## v0.1.0 (2026-05-17)
 
 首个可用版本。
