@@ -87,29 +87,31 @@ docker run -p 8080:8080 -v ${PWD}/docs:/app/docs -v ${PWD}/data:/app/data wenqu
 
 ```
 wenqu/
-├── server.py          # Web 服务器入口
-├── core/
-│   ├── chunker.py     # 文档分块、摘要、关键词
-│   ├── config.py      # 配置管理（.env 自动加载）
-│   ├── embed.py       # 向量化（Ollama）
-│   ├── llm.py         # LLM 调用（DeepSeek / Ollama）
-│   ├── logging.py     # 日志
-│   ├── parser.py      # 文档解析（多格式）
-│   ├── rag.py         # RAG 编排层
-│   ├── retrieve.py    # 混合检索（向量 + BM25 bigram + RRF）
-│   └── storage.py     # SQLite 存储
+├── server.py            # Web 服务器入口
+├── run_tests.py         # 测试入口
+├── core/                # 核心模块
+│   ├── chunker.py       # 文档分块、摘要、关键词
+│   ├── config.py        # 配置管理（.env 自动加载）
+│   ├── embed.py         # 向量化（Ollama）
+│   ├── llm.py           # LLM 调用（DeepSeek / Ollama）
+│   ├── logging.py       # 日志
+│   ├── parser.py        # 文档解析（多格式）
+│   ├── rag.py           # RAG 编排层
+│   ├── retrieve.py      # 混合检索（向量 + BM25 + RRF）
+│   └── storage.py       # SQLite 存储
 ├── static/
-│   └── index.html     # Web 前端
+│   └── index.html       # Web 前端
 ├── tests/
-│   └── test_core.py   # 33 个测试用例
-├── scripts/           # 脚本（含 pre-push hook）
-├── docs/              # 待导入文档目录
-├── data/              # 向量数据库（不入库）
-├── CLAUDE.md          # 项目工作流文档
-├── CHANGELOG.md       # 版本更新记录
-├── Dockerfile
-├── pyproject.toml
-└── requirements.txt
+│   └── test_core.py     # 33 个测试用例
+├── scripts/             # 脚本（hook / 启动 / 运维工具）
+│   └── tools/           # 备份、评估、更新
+├── docs/                # 待导入文档
+├── data/                # 向量数据库（不入库）
+├── logs/                # 错误日志（不入库）
+├── CLAUDE.md            # 项目工作流
+├── CHANGELOG.md         # 版本更新记录
+├── README.md
+└── API.md
 ```
 
 ## 配置
