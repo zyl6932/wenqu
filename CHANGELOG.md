@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-- 测试套件修复：修正 5 个测试 bug（路径错误、import 拼写、环境变量泄漏等），新增分页/stream/分词覆盖
+### 测试修复 & 增强
+- **test_parse_txt** — 修复文档路径指向 `tests/docs/` 而非项目根 `docs/`，此前因路径不存在静默跳过从未真正执行
+- **test_read_pdf** — 修复 `from core.pypdf import` 拼写错误（应为 `pypdf`），被 `try/except` 吞掉未暴露
+- **test_env_override** — 修复 `os.environ['PORT']` 修改后未清理，可能污染后续测试
+- **test_cosine** — 修正注释：同义词→同一词更近，实际语义正确
+- **test_embed_* / test_retrieve_cached** — 新增 Ollama 可用性守卫，Ollama 未运行时自动跳过而非报错
+- 新增 6 个测试：分页接口、stream 响应格式、标点分词、expand_query 边界、.env 加载检查
+- 测试从 27 升至 33 个
 
 ## v0.1.0 (2026-05-17)
 

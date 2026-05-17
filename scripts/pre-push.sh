@@ -13,10 +13,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 2. 检查 CHANGELOG.md 是否被修改
-if ! git diff --cached --name-only HEAD 2>/dev/null | grep -q "CHANGELOG.md"; then
+# 2. 检查 CHANGELOG.md 是否在最新 commit 中被修改
+changed=$(git diff --name-only HEAD~1 2>/dev/null | grep "CHANGELOG.md")
+if [ -z "$changed" ]; then
     echo ""
-    echo "  ⚠ 提醒: 本次推送未修改 CHANGELOG.md，别忘了记录更新内容。"
+    echo "  ⚠ 提醒: 本次 commit 未修改 CHANGELOG.md"
+    echo "     请把改动总结写到 Unreleased 区（不要只写一句'修复bug'）"
 fi
 
 echo ""

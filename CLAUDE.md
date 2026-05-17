@@ -19,7 +19,8 @@ pip install -r requirements.txt  # 安装依赖
 ### 日常推送
 ```bash
 # 1. 改代码
-# 2. 更新 CHANGELOG.md
+# 2. 更新 CHANGELOG.md — 写到 Unreleased 区域，说明做了什么、为什么
+#    不要只写一句"修复bug"，要写清楚修了哪个、有什么影响
 # 3. 提交并推送（pre-push hook 自动跑测试）
 git add -A
 git commit -m "feat/fix/docs: 简述改动"
