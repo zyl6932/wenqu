@@ -1,0 +1,9 @@
+@echo off
+cd /d "%~dp0"
+echo 启动知识库服务器...
+start "知识库Server" python server.py
+echo 等待服务器就绪...
+timeout /t 3 /nobreak >nul
+echo 启动 Cloudflare 隧道...
+"%USERPROFILE%\cloudflared.exe" tunnel --url http://localhost:8080
+pause

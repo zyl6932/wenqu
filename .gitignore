@@ -1,0 +1,41 @@
+# 环境配置
+.env
+.claude/
+
+# 数据文件 (SQLite + 日志)
+data/
+logs/
+backups/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 文档二进制（docs 目录只提交文本文件）
+docs/*.pdf
+docs/*.docx
+docs/*.pptx
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+docs/*.gif
+docs/*.bmp
+docs/*.webp
+
+# 临时文件
+*.tmp
+*.temp

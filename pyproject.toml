@@ -1,0 +1,19 @@
+[project]
+name = "wenqu"
+version = "0.1.0"
+description = "本地知识库 RAG 问答系统 — 纯 Python + 零外部依赖核心"
+requires-python = ">=3.10"
+dependencies = [
+    "pypdf>=5.0",
+]
+optional-dependencies = {
+    "full": ["pypdf>=5.0", "Pillow>=10.0"],
+    "dev": ["pytest>=8.0"],
+}
+
+[project.scripts]
+wenqu-server = "server:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
