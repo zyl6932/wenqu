@@ -14,11 +14,28 @@ python run_tests.py       # 运行测试 (27 tests)
 pip install -r requirements.txt  # 安装依赖
 ```
 
-## 推送前工作流（必须遵守）
-每次 `git push` 之前：
-1. 运行 `python run_tests.py` 确保 27 个测试全部通过
-2. 在 `CHANGELOG.md` 顶部记录本次改动内容
-3. pre-push hook 会自动执行以上检查（测试不通过会拒绝推送）
+## 标准工作流
+
+### 日常推送
+```bash
+# 1. 改代码
+# 2. 更新 CHANGELOG.md
+# 3. 提交并推送（pre-push hook 自动跑测试）
+git add -A
+git commit -m "feat/fix/docs: 简述改动"
+git push
+```
+
+### 发布新版本
+当需要发 release 时（功能基本稳定 / 重要里程碑）：
+```bash
+# 1. 整理 CHANGELOG.md，将累积改动合并为一个版本条目
+# 2. 确保 pyproject.toml 版本号正确
+# 3. 提交并推送
+# 4. 创建 GitHub Release（CHANGELOG 内容会自动作为 release notes）
+gh release create vX.Y.Z --title "vX.Y.Z - 简述" --notes-file CHANGELOG.md
+```
+版本号遵循 semver：`v主.次.补丁`（如 v0.1.0 → v0.2.0 → v1.0.0）
 
 ## 项目结构
 ```
