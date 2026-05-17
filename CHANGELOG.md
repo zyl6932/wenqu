@@ -14,6 +14,9 @@
 ### 文档修正 (2026-05-17 15:58)
 - README：补充 `LLM_PROVIDER`、`ENABLE_QUERY_REWRITE` 配置项，修正 LLM 描述（支持 DeepSeek/Ollama）、Docker Windows 命令、过时的项目结构
 
+### 文档英文化 (2026-05-17 16:30)
+- README 重写为英文，CHANGELOG 保持中文
+
 ### 目录整理 (2026-05-17 16:25)
 - `start-server.bat` 移至 `scripts/`，`server_debug.log` 删除，`__pycache__/` 清理
 - README 项目结构更新

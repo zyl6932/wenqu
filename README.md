@@ -1,56 +1,58 @@
-# 问渠
+# Wenqu (问渠)
 
-本地知识库 RAG 问答系统。纯 Python 实现，核心零外部依赖，基于 Ollama 做向量化，支持 DeepSeek API 或 Ollama 本地模型做 LLM 推理。
+A local knowledge base RAG Q&A system. Pure Python with zero-dependency core, using Ollama for embeddings and DeepSeek API or Ollama for LLM inference.
 
-## 特性
+> The name comes from Zhu Xi's poem: "问渠那得清如许，为有源头活水来" — the pond stays clear because fresh water keeps flowing from the source.
 
-- **文档解析** — 支持 txt / md / docx / pptx / pdf / 图片（OCR），自动分块、去重、摘要
-- **向量检索** — Ollama + bge-m3，混合检索（向量相似度 + BM25 + RRF 重排序）
-- **流式问答** — SSE 流式输出，多轮对话，自动补全 / 纠错
-- **OpenAI 兼容** — `/v1/chat/completions`、`/v1/embeddings`、`/v1/models`，任意 OpenAI SDK 可直接接入
-- **Web UI** — 问渠风格界面，支持深色/浅色主题、对话管理、块编辑器、拖拽上传
-- **零外部依赖核心** — 核心模块仅用 Python 标准库，`pypdf` 为可选依赖
+## Features
 
-## 快速开始
+- **Document parsing** — txt / md / docx / pptx / pdf / images, with auto chunking, dedup, and summarization
+- **Hybrid retrieval** — Ollama + bge-m3 embeddings, combined with BM25 + RRF fusion ranking
+- **Streaming Q&A** — SSE streaming responses, multi-turn conversations, auto-completion and correction
+- **OpenAI-compatible** — `/v1/chat/completions`, `/v1/embeddings`, `/v1/models` — drop-in with any OpenAI SDK
+- **Web UI** — built-in interface with dark/light theme, conversation management, chunk editor, drag-and-drop upload
+- **Zero-dependency core** — core modules use only Python standard library; `pypdf` is optional
 
-### 环境要求
+## Quick start
+
+### Prerequisites
 
 - Python >= 3.10
-- [Ollama](https://ollama.com) 运行中，已拉取 `bge-m3` 模型
+- [Ollama](https://ollama.com) running with the `bge-m3` model
 
 ```bash
-# 安装 Ollama 并拉取模型
+# Install Ollama and pull the embedding model
 ollama pull bge-m3
-# （可选）视觉模型，用于图片/PDF 图片提取
+# (Optional) Vision model for image-based PDF extraction
 ollama pull minicpm-v:8b
 ```
 
-### 安装运行
+### Install & Run
 
 ```bash
-# 克隆
+# Clone
 git clone https://github.com/zyl6932/wenqu.git
 cd wenqu
 
-# 安装依赖
+# Install dependencies
 pip install -r requirements.txt
 
-# 配置
+# Configure
 cp .env.example .env
-# 编辑 .env：
-#   - 如果用 DeepSeek API，填 DEEPSEEK_KEY
-#   - 如果想完全离线，改为 LLM_PROVIDER=ollama（需先 ollama pull qwen2.5）
+# Edit .env:
+#   - For DeepSeek API: set DEEPSEEK_KEY
+#   - For fully offline mode: set LLM_PROVIDER=ollama (requires ollama pull qwen2.5 first)
 
-# 放入文档到 docs/ 目录
-# 把你的 .txt .md .docx .pdf 等文件放到 docs/
+# Add documents to docs/
+# Place your .txt, .md, .docx, .pdf files in the docs/ directory
 
-# 启动
+# Start
 python server.py
 ```
 
-浏览器访问 `http://localhost:8080`，在 Web 界面中点击「+ 导入文档」即可开始问答。
+Open `http://localhost:8080` in your browser, then click **+ 导入文档** to index your documents and start asking questions.
 
-### Docker（纯 CPU）
+### Docker (CPU only)
 
 ```bash
 docker build -t wenqu .
@@ -60,78 +62,78 @@ docker run -p 8080:8080 -v $(pwd)/docs:/app/docs -v $(pwd)/data:/app/data wenqu
 docker run -p 8080:8080 -v ${PWD}/docs:/app/docs -v ${PWD}/data:/app/data wenqu
 ```
 
-## API 概览
+## API
 
-| 端点 | 说明 |
-|------|------|
-| `POST /api/ask` | 同步问答 |
-| `POST /api/ask/stream` | 流式问答（SSE） |
-| `POST /v1/chat/completions` | OpenAI Chat 兼容 |
-| `POST /v1/embeddings` | OpenAI Embedding 兼容 |
-| `GET /v1/models` | 模型列表 |
-| `POST /api/import` | 导入 docs 目录文档 |
-| `GET /api/docs` | 列出已导入文档 |
-| `DELETE /api/docs` | 删除文档 |
-| `GET /api/chunks` | 查看向量块 |
-| `PUT /api/chunks` | 编辑向量块 |
-| `DELETE /api/chunks` | 删除向量块 |
-| `POST /api/chunks/split` | 拆分向量块 |
-| `POST /api/chunks/merge` | 合并向量块 |
-| `POST /api/upload` | 拖拽上传文件 |
-| `POST /api/feedback` | 反馈记录 |
-| `GET /api/health` | 健康检查 |
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/ask` | Synchronous Q&A |
+| `POST /api/ask/stream` | Streaming Q&A (SSE) |
+| `POST /v1/chat/completions` | OpenAI Chat Completions compatible |
+| `POST /v1/embeddings` | OpenAI Embeddings compatible |
+| `GET /v1/models` | List models |
+| `POST /api/import` | Import documents from docs/ |
+| `GET /api/docs` | List imported documents |
+| `DELETE /api/docs` | Delete a document |
+| `GET /api/chunks` | List chunks (supports pagination) |
+| `PUT /api/chunks` | Edit a chunk |
+| `DELETE /api/chunks` | Delete chunks |
+| `POST /api/chunks/split` | Split a chunk |
+| `POST /api/chunks/merge` | Merge chunks |
+| `POST /api/upload` | Upload file via drag-and-drop |
+| `POST /api/feedback` | Submit feedback |
+| `GET /api/health` | Health check |
 
-完整 API 文档见 [API.md](API.md)。
+See [API.md](API.md) for details.
 
-## 项目结构
+## Project structure
 
 ```
 wenqu/
-├── server.py            # Web 服务器入口
-├── run_tests.py         # 测试入口
-├── core/                # 核心模块
-│   ├── chunker.py       # 文档分块、摘要、关键词
-│   ├── config.py        # 配置管理（.env 自动加载）
-│   ├── embed.py         # 向量化（Ollama）
-│   ├── llm.py           # LLM 调用（DeepSeek / Ollama）
-│   ├── logging.py       # 日志
-│   ├── parser.py        # 文档解析（多格式）
-│   ├── rag.py           # RAG 编排层
-│   ├── retrieve.py      # 混合检索（向量 + BM25 + RRF）
-│   └── storage.py       # SQLite 存储
+├── server.py            # Web server entry point
+├── run_tests.py         # Test runner
+├── core/                # Core modules
+│   ├── chunker.py       # Text chunking, summarization, keywords
+│   ├── config.py        # Config management (.env auto-loading)
+│   ├── embed.py         # Embedding via Ollama
+│   ├── llm.py           # LLM calls (DeepSeek / Ollama)
+│   ├── logging.py       # Logging
+│   ├── parser.py        # Multi-format document parsing
+│   ├── rag.py           # RAG orchestration
+│   ├── retrieve.py      # Hybrid retrieval (vector + BM25 + RRF)
+│   └── storage.py       # SQLite storage
 ├── static/
-│   └── index.html       # Web 前端
+│   └── index.html       # Web frontend
 ├── tests/
-│   └── test_core.py     # 33 个测试用例
-├── scripts/             # 脚本（hook / 启动 / 运维工具）
-│   └── tools/           # 备份、评估、更新
-├── docs/                # 待导入文档
-├── data/                # 向量数据库（不入库）
-├── logs/                # 错误日志（不入库）
-├── CLAUDE.md            # 项目工作流
-├── CHANGELOG.md         # 版本更新记录
+│   └── test_core.py     # 33 test cases
+├── scripts/             # Scripts (hooks, startup, utilities)
+│   └── tools/           # Backup, evaluation, update tools
+├── docs/                # Documents to index
+├── data/                # Vector database (not committed)
+├── logs/                # Error logs (not committed)
+├── CLAUDE.md            # Project workflow
+├── CHANGELOG.md         # Release notes (Chinese)
 ├── README.md
 └── API.md
 ```
 
-## 配置
+## Configuration
 
-通过环境变量或 `.env` 文件配置：
+Set via environment variables or `.env` file:
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `LLM_PROVIDER` | `deepseek` | LLM 后端：`deepseek`（需 Key）或 `ollama`（离线） |
-| `DEEPSEEK_KEY` | — | DeepSeek API Key（ollama 模式无需） |
-| `DEEPSEEK_BASE` | `https://api.deepseek.com/v1` | DeepSeek API 地址 |
-| `DEEPSEEK_MODEL` | `deepseek-chat` | 对话模型（ollama 模式设为 qwen2.5 等） |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama 地址 |
-| `EMBED_MODEL` | `bge-m3` | 向量化模型 |
-| `VISION_MODEL` | `minicpm-v:8b` | 视觉模型 |
-| `ENABLE_QUERY_REWRITE` | `1` | 查询改写：`1` 开启，`0` 关闭（省 LLM 调用） |
-| `HOST` | `0.0.0.0` | 监听地址 |
-| `PORT` | `8080` | 监听端口 |
-| `CHUNK_MAX_TOKENS` | `400` | 分块最大 token |
-| `TOP_K` | `10` | 检索返回数量 |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_PROVIDER` | `deepseek` | LLM backend: `deepseek` (requires key) or `ollama` (offline) |
+| `DEEPSEEK_KEY` | — | DeepSeek API key (not needed in ollama mode) |
+| `DEEPSEEK_BASE` | `https://api.deepseek.com/v1` | DeepSeek API base URL |
+| `DEEPSEEK_MODEL` | `deepseek-chat` | Chat model (set to e.g. `qwen2.5` for ollama mode) |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `EMBED_MODEL` | `bge-m3` | Embedding model |
+| `VISION_MODEL` | `minicpm-v:8b` | Vision model for image extraction |
+| `ENABLE_QUERY_REWRITE` | `1` | Query rewriting: `1` on, `0` off (saves an LLM call) |
+| `HOST` | `0.0.0.0` | Listen host |
+| `PORT` | `8080` | Listen port |
+| `CHUNK_MAX_TOKENS` | `400` | Max tokens per chunk |
+| `TOP_K` | `10` | Number of retrieval results |
 
 ## License
 
