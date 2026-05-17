@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-### 测试修复 & 增强
+### 测试修复 & 增强 (2026-05-17 15:50)
 - **test_parse_txt** — 修复文档路径指向 `tests/docs/` 而非项目根 `docs/`，此前因路径不存在静默跳过从未真正执行
 - **test_read_pdf** — 修复 `from core.pypdf import` 拼写错误（应为 `pypdf`），被 `try/except` 吞掉未暴露
 - **test_env_override** — 修复 `os.environ['PORT']` 修改后未清理，可能污染后续测试
@@ -11,7 +11,7 @@
 - 新增 6 个测试：分页接口、stream 响应格式、标点分词、expand_query 边界、.env 加载检查
 - 测试从 27 升至 33 个
 
-### 文档修正
+### 文档修正 (2026-05-17 15:58)
 - README：补充 `LLM_PROVIDER`、`ENABLE_QUERY_REWRITE` 配置项，修正 LLM 描述（支持 DeepSeek/Ollama）、Docker Windows 命令、过时的项目结构
 
 ## v0.1.0 (2026-05-17)
