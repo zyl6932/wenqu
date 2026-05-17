@@ -27,12 +27,12 @@ git push
 ```
 
 ### 发布新版本
-当需要发 release 时（功能基本稳定 / 重要里程碑）：
+不要每次都发 —— 积累足够多改动后再发（如 5-10 个功能/修复）。
 ```bash
-# 1. 整理 CHANGELOG.md，将累积改动合并为一个版本条目
+# 1. 将 CHANGELOG.md 中 Unreleased 的内容移到新版本号下
 # 2. 确保 pyproject.toml 版本号正确
 # 3. 提交并推送
-# 4. 创建 GitHub Release（CHANGELOG 内容会自动作为 release notes）
+# 4. 创建 GitHub Release
 gh release create vX.Y.Z --title "vX.Y.Z - 简述" --notes-file CHANGELOG.md
 ```
 版本号遵循 semver：`v主.次.补丁`（如 v0.1.0 → v0.2.0 → v1.0.0）
