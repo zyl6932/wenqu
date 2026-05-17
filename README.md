@@ -1,6 +1,6 @@
 # 问渠
 
-本地知识库 RAG 问答系统。纯 Python 实现，核心零外部依赖，基于 Ollama 做向量化，DeepSeek 做 LLM 推理。
+本地知识库 RAG 问答系统。纯 Python 实现，核心零外部依赖，基于 Ollama 做向量化，支持 DeepSeek API 或 Ollama 本地模型做 LLM 推理。
 
 ## 特性
 
@@ -35,12 +35,13 @@ cd wenqu
 # 安装依赖
 pip install -r requirements.txt
 
-# 配置（可选，也可跳过使用默认值）
+# 配置
 cp .env.example .env
-# 编辑 .env 填入 DeepSeek API Key 等配置
+# 编辑 .env：
+#   - 如果用 DeepSeek API，填 DEEPSEEK_KEY
+#   - 如果想完全离线，改为 LLM_PROVIDER=ollama（需先 ollama pull qwen2.5）
 
 # 放入文档到 docs/ 目录
-mkdir docs
 # 把你的 .txt .md .docx .pdf 等文件放到 docs/
 
 # 启动
@@ -53,7 +54,10 @@ python server.py
 
 ```bash
 docker build -t wenqu .
+# Linux / macOS
 docker run -p 8080:8080 -v $(pwd)/docs:/app/docs -v $(pwd)/data:/app/data wenqu
+# Windows PowerShell
+docker run -p 8080:8080 -v ${PWD}/docs:/app/docs -v ${PWD}/data:/app/data wenqu
 ```
 
 ## API 概览
@@ -86,20 +90,23 @@ wenqu/
 ├── server.py          # Web 服务器入口
 ├── core/
 │   ├── chunker.py     # 文档分块、摘要、关键词
-│   ├── config.py      # 配置管理（环境变量覆盖）
+│   ├── config.py      # 配置管理（.env 自动加载）
 │   ├── embed.py       # 向量化（Ollama）
-│   ├── llm.py         # LLM 调用（DeepSeek）
+│   ├── llm.py         # LLM 调用（DeepSeek / Ollama）
 │   ├── logging.py     # 日志
 │   ├── parser.py      # 文档解析（多格式）
 │   ├── rag.py         # RAG 编排层
-│   ├── retrieve.py    # 混合检索（向量 + BM25 + RRF）
+│   ├── retrieve.py    # 混合检索（向量 + BM25 bigram + RRF）
 │   └── storage.py     # SQLite 存储
 ├── static/
 │   └── index.html     # Web 前端
+├── tests/
+│   └── test_core.py   # 33 个测试用例
+├── scripts/           # 脚本（含 pre-push hook）
 ├── docs/              # 待导入文档目录
-├── data/              # 向量数据库（SQLite）
-├── tests/             # 测试
-├── tools/             # 运维脚本（备份、评估、更新）
+├── data/              # 向量数据库（不入库）
+├── CLAUDE.md          # 项目工作流文档
+├── CHANGELOG.md       # 版本更新记录
 ├── Dockerfile
 ├── pyproject.toml
 └── requirements.txt
@@ -111,12 +118,14 @@ wenqu/
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DEEPSEEK_KEY` | — | DeepSeek API Key |
-| `DEEPSEEK_BASE` | `https://api.deepseek.com/v1` | API 地址 |
-| `DEEPSEEK_MODEL` | `deepseek-chat` | 对话模型 |
+| `LLM_PROVIDER` | `deepseek` | LLM 后端：`deepseek`（需 Key）或 `ollama`（离线） |
+| `DEEPSEEK_KEY` | — | DeepSeek API Key（ollama 模式无需） |
+| `DEEPSEEK_BASE` | `https://api.deepseek.com/v1` | DeepSeek API 地址 |
+| `DEEPSEEK_MODEL` | `deepseek-chat` | 对话模型（ollama 模式设为 qwen2.5 等） |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama 地址 |
 | `EMBED_MODEL` | `bge-m3` | 向量化模型 |
 | `VISION_MODEL` | `minicpm-v:8b` | 视觉模型 |
+| `ENABLE_QUERY_REWRITE` | `1` | 查询改写：`1` 开启，`0` 关闭（省 LLM 调用） |
 | `HOST` | `0.0.0.0` | 监听地址 |
 | `PORT` | `8080` | 监听端口 |
 | `CHUNK_MAX_TOKENS` | `400` | 分块最大 token |
