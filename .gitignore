@@ -36,6 +36,10 @@ docs/*.gif
 docs/*.bmp
 docs/*.webp
 
+# 前端构建
+frontend/node_modules/
+static/dist/
+
 # 临时文件
 *.tmp
 *.temp

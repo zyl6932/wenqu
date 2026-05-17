@@ -1,6 +1,6 @@
 [project]
 name = "wenqu"
-version = "0.1.0"
+version = "0.2.0"
 description = "本地知识库 RAG 问答系统 — 纯 Python + 零外部依赖核心"
 requires-python = ">=3.10"
 dependencies = [

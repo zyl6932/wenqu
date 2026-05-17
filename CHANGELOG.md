@@ -2,41 +2,33 @@
 
 ## Unreleased
 
+> 日常改动写在这里，攒够了升为版本号。
+
+## v0.2.0 (2026-05-17)
+
+React 前端重写，保持原版 vanilla HTML 作为回退。
+
+### 前端重写 (2026-05-17 17:50)
+- **React 18 + Vite 5** 重写全部 1140 行 vanilla JS 为 48 个组件文件
+- 组件树：Sidebar (10) + Chat (10) + Modals (5) + Shared (3) + Contexts (3) + Hooks (4)
+- 状态管理：useReducer 驱动对话 CRUD（12 个 action），3 个 Context（Theme/Toast/Conversations）
+- 保留原版 `static/index.html`：删除 `static/dist/` 后自动回退
+- `npm run build` 671ms 输出到 `static/dist/`
+- server.py `_serve_static()` 自动检测 React 构建
+
 ### 测试修复 & 增强 (2026-05-17 15:50)
-- **test_parse_txt** — 修复文档路径指向 `tests/docs/` 而非项目根 `docs/`，此前因路径不存在静默跳过从未真正执行
-- **test_read_pdf** — 修复 `from core.pypdf import` 拼写错误（应为 `pypdf`），被 `try/except` 吞掉未暴露
-- **test_env_override** — 修复 `os.environ['PORT']` 修改后未清理，可能污染后续测试
-- **test_cosine** — 修正注释：同义词→同一词更近，实际语义正确
-- **test_embed_* / test_retrieve_cached** — 新增 Ollama 可用性守卫，Ollama 未运行时自动跳过而非报错
-- 新增 6 个测试：分页接口、stream 响应格式、标点分词、expand_query 边界、.env 加载检查
+- 修复 5 个测试 bug：路径错误、import 拼写、环境变量泄漏、注释误导、Ollama 守卫缺失
+- 新增 6 个测试：分页、stream、分词、expand_query、.env 加载
 - 测试从 27 升至 33 个
 
-### 文档修正 (2026-05-17 15:58)
-- README：补充 `LLM_PROVIDER`、`ENABLE_QUERY_REWRITE` 配置项，修正 LLM 描述（支持 DeepSeek/Ollama）、Docker Windows 命令、过时的项目结构
+### 改进
+- LLM 提供商可切换（DeepSeek / Ollama），API Key 硬编码移除
+- BM25 中文 bigram 分词，query rewrite 可配置开关
+- README 英文化，CLAUDE.md 工作流文档，GitHub pre-push hook
+- 目录整理、CHANGELOG 规范（具体时间 + 详细说明）
 
-### 文档英文化 (2026-05-17 16:30)
-- README 重写为英文，CHANGELOG 保持中文
-
-### 目录整理 (2026-05-17 16:25)
-- `start-server.bat` 移至 `scripts/`，`server_debug.log` 删除，`__pycache__/` 清理
-- README 项目结构更新
+---
 
 ## v0.1.0 (2026-05-17)
 
-首个可用版本。
-
-### 核心功能
-- 本地知识库 RAG 问答系统，纯 Python 核心（零外部依赖）
-- 支持 txt / md / docx / pptx / pdf / 图片解析
-- Ollama 向量化 (bge-m3) + DeepSeek / Ollama LLM
-- 混合检索：向量相似度 + BM25 + RRF 重排序
-- SSE 流式问答，多轮对话
-- OpenAI 兼容 API (`/v1/chat/completions`、`/v1/embeddings`、`/v1/models`)
-- Web 管理界面：对话管理、块编辑器、深色/浅色主题、拖拽上传
-- Docker 支持
-
-### 开发者工具
-- 27 个测试用例覆盖核心模块
-- pre-push hook：推送前自动跑测试
-- CLAUDE.md 工作流文档
-- CHANGELOG.md 版本记录
+首个可用版本。本地 RAG 知识库，Ollama 向量化 + DeepSeek 推理，OpenAI 兼容 API。

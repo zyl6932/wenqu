@@ -68,6 +68,7 @@ from core.retrieve import retrieve
 from core.config import EMBED_CFG, SERVER_CFG
 
 STATIC_DIR = Path(__file__).parent / "static"
+REACT_DIST = STATIC_DIR / "dist"
 
 
 class APIHandler(SimpleHTTPRequestHandler):
@@ -153,20 +154,37 @@ class APIHandler(SimpleHTTPRequestHandler):
         if url_path == "/" or url_path == "":
             url_path = "/index.html"
 
-        file_path = STATIC_DIR / url_path.lstrip("/")
+        # 如果 React 构建存在，优先提供 dist/ 内容
+        if (REACT_DIST / "index.html").is_file():
+            base_dir = REACT_DIST
+            content_types = {
+                ".html": "text/html; charset=utf-8",
+                ".js": "application/javascript",
+                ".css": "text/css",
+                ".svg": "image/svg+xml",
+                ".woff2": "font/woff2",
+            }
+        else:
+            base_dir = STATIC_DIR
+            content_types = {
+                ".html": "text/html; charset=utf-8",
+                ".js": "application/javascript",
+                ".css": "text/css",
+                ".svg": "image/svg+xml",
+            }
+
+        file_path = base_dir / url_path.lstrip("/")
         if not file_path.is_file():
-            file_path = STATIC_DIR / "index.html"
+            if base_dir == REACT_DIST:
+                # SPA fallback: 非文件路径返回 index.html
+                file_path = REACT_DIST / "index.html"
+            else:
+                file_path = STATIC_DIR / "index.html"
         if not file_path.is_file():
             self.send_error(404)
             return
 
-        content_type = {
-            ".html": "text/html; charset=utf-8",
-            ".js": "application/javascript",
-            ".css": "text/css",
-            ".svg": "image/svg+xml",
-        }.get(file_path.suffix, "application/octet-stream")
-
+        content_type = content_types.get(file_path.suffix, "application/octet-stream")
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self._send_cors()
