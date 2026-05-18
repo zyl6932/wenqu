@@ -155,7 +155,7 @@ body {
 .hdr-btn:hover { background:var(--primary-light); border-color:var(--vermilion); color:var(--vermilion); }
 
 .chat-messages {
-  flex:1; overflow-y:auto; padding:24px 20px 80px; display:flex; flex-direction:column; gap:12px;
+  flex:1; overflow-y:auto; padding:24px 20px 60px; display:flex; flex-direction:column; gap:12px;
   scroll-behavior:smooth;
 }
 .message { max-width:80%; animation:fadeUp .3s ease; }
