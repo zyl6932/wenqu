@@ -10,11 +10,14 @@ export default function MessageList({ elapsed, isStreaming, onFillInput }) {
   const containerRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
+  const lastContent = conv?.messages.length ? conv.messages[conv.messages.length - 1].content : '';
+
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [conv?.messages.length, scrollToBottom]);
+  // 新消息时滚动 + 流式输出时跟随滚动
+  useEffect(() => { scrollToBottom(); }, [conv?.messages.length, lastContent, scrollToBottom]);
 
   function handleScroll() {
     const el = containerRef.current;
