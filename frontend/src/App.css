@@ -247,10 +247,10 @@ pre:hover .code-copy-btn { opacity:1; }
 
 /* thinking */
 .think-card {
-  margin: 4px 0 8px;
+  margin: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: transparent;
   overflow: hidden;
   cursor: pointer;
   user-select: none;
@@ -261,7 +261,7 @@ pre:hover .code-copy-btn { opacity:1; }
 }
 .think-card-header {
   display: flex; align-items: center; gap: 6px;
-  padding: 10px 14px;
+  padding: 6px 12px;
 }
 .think-arrow {
   font-size: 10px; color: var(--ink-mute);
@@ -278,13 +278,13 @@ pre:hover .code-copy-btn { opacity:1; }
 }
 .think-card-body.open { max-height: 2000px; }
 .think-card-text {
-  padding: 0 14px 12px;
+  padding: 0 12px 8px;
   white-space: pre-wrap; font-size: 13px;
   color: var(--ink-soft); line-height: 1.7;
   user-select: text; cursor: auto;
 }
 .think-answer {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* input */
