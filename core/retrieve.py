@@ -5,6 +5,7 @@
 import json
 import re
 from collections import Counter
+from pathlib import Path
 
 from .config import RETRIEVAL_CFG
 from .embed import embed_single, cosine
@@ -271,7 +272,7 @@ def _keyword_search(question: str, top_k: int = 5) -> list | None:
 
 
 # ── 主检索入口 ──────────────────────────────────────
-def retrieve(question: str, top_k: int | None = None, expand: int | None = None) -> tuple[list[str], list[str]] | None:
+def retrieve(question: str, top_k: int | None = None, expand: int | None = None, trace: dict | None = None) -> tuple[list[str], list[str]] | None:
     tk = top_k or RETRIEVAL_CFG.top_k
     ex = expand or RETRIEVAL_CFG.expand
     cache_key = f"{question}|{tk}|{ex}"
@@ -287,11 +288,21 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None)
     expanded_q = expand_query(corrected_q)
     rewritten_q = rewrite_query(corrected_q)
 
+    steps = {
+        "original": question,
+        "corrected": corrected_q if corrected_q != question else None,
+        "expanded": expanded_q if expanded_q != corrected_q else None,
+        "rewritten": rewritten_q if rewritten_q != corrected_q else None,
+    }
+
     relevant_docs = _document_level_retrieval(corrected_q)
+    steps["docs_matched"] = [Path(d).name for d in relevant_docs] if relevant_docs else []
+
     q_emb = embed_single(rewritten_q)
 
     primary_rows = load_chunks_for_sources(relevant_docs) if relevant_docs else load_all_chunks()
     other_rows = load_chunks_except(relevant_docs) if relevant_docs else []
+    steps["total_chunks"] = len(primary_rows) + len(other_rows)
 
     sem_scored = []
     for chunk_id, source, text, emb_blob in primary_rows + other_rows:
@@ -300,11 +311,18 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None)
         sem_scored.append((score, chunk_id, text, source))
     sem_scored.sort(key=lambda x: x[0], reverse=True)
     sem_top = [item for item in sem_scored if item[0] >= RETRIEVAL_CFG.min_similarity][:tk * 2]
+    steps["semantic_top"] = len(sem_top)
+    steps["top_score"] = round(sem_top[0][0], 3) if sem_top else 0
 
     _bm25.invalidate()
     bm25_top = _bm25.search(expanded_q, top_k=tk * 2)
+    steps["bm25_top"] = len(bm25_top)
 
     fused = _rrf_fusion(sem_top, bm25_top, RETRIEVAL_CFG.rrf_k, tk * 2)
+    steps["fused_count"] = len(fused)
+
+    if trace is not None:
+        trace.update(steps)
 
     boosted = []
     for score, cid, text, src in fused:
