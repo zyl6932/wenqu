@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
 
-export default function MessageContent({ role, content, isStreaming }) {
+export default function MessageContent({ role, content, thinkingContent, isStreaming }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -23,19 +23,33 @@ export default function MessageContent({ role, content, isStreaming }) {
       pre.style.position = 'relative';
       pre.appendChild(btn);
     });
-  }, [role, content]);
+  }, [role, content, thinkingContent]);
 
   if (role === 'user') {
     return <div className="mc-user message-content">{content}</div>;
   }
 
-  if (!content) {
+  // 有思考内容 OR 等待首个 token（思考中动画）
+  if (!content && !thinkingContent) {
     return <div className="mc-ai message-content"><span className="thinking-text">思考中</span></div>;
   }
 
   const cls = isStreaming ? 'mc-ai message-content streaming-cursor' : 'mc-ai message-content';
   const html = renderMarkdown(content);
+
+  if (!thinkingContent) {
+    return <div ref={ref} className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
+  }
+
+  // 有思考过程 + 可能有回答
+  const thinkHtml = renderMarkdown(thinkingContent);
   return (
-    <div ref={ref} className={cls} dangerouslySetInnerHTML={{ __html: html }} />
+    <div ref={ref} className="mc-ai message-content">
+      <details className="thinking-block" open>
+        <summary>思考过程</summary>
+        <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{thinkingContent}</div>
+      </details>
+      {content && <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: html }} />}
+    </div>
   );
 }

@@ -22,7 +22,7 @@ async function request(method, path, body, opts = {}) {
   }
 }
 
-export function askStream(question, history, signal, onToken, onSources, onThinking, onDone, onError) {
+export function askStream(question, history, signal, onToken, onThink, onSources, onThinking, onDone, onError) {
   const controller = new AbortController();
   const linkedSignal = signal || controller.signal;
   const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -51,6 +51,7 @@ export function askStream(question, history, signal, onToken, onSources, onThink
           try {
             const data = JSON.parse(line.slice(6));
             if (data.token) onToken(data.token);
+            else if (data.think) onThink(data.think);
             else if (data.thinking) onThinking(data.thinking);
             else if (data.sources) onSources(data.sources);
             else if (data.error) onError(data.error);

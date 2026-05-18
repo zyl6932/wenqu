@@ -34,8 +34,9 @@ export default function ChatArea() {
       history.length > 1 ? history.slice(0, -1) : null,
       null,
       (token) => dispatch({ type: 'APPEND_TOKEN', token }),
+      (think) => dispatch({ type: 'APPEND_THINK', token: think }),
       (sources) => dispatch({ type: 'SET_SOURCES', sources }),
-      (thinking) => dispatch({ type: 'APPEND_TOKEN', token: `<details class="thinking-block" open><summary>思考过程</summary>\n\n${thinking}\n\n</details>\n\n` }),
+      (thinking) => dispatch({ type: 'APPEND_TOKEN', token: `<details class="thinking-block" open><summary>思考过程</summary>\n\n检索步骤完成\n\n</details>\n\n` }),
       (elapsedStr, aborted) => {
         setIsStreaming(false);
         stopRef.current = null;

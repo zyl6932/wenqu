@@ -58,8 +58,22 @@ function convReducer(state, action) {
       next = {
         ...state,
         conversations: state.conversations.map(c => c.id === state.activeConvId
-          ? { ...c, messages: [...c.messages, { role: 'ai', content: '', sources: [], timestamp: Date.now() }] }
+          ? { ...c, messages: [...c.messages, { role: 'ai', content: '', thinkingContent: '', sources: [], timestamp: Date.now() }] }
           : c)
+      };
+      break;
+    }
+    case 'APPEND_THINK': {
+      next = {
+        ...state,
+        conversations: state.conversations.map(c => {
+          if (c.id !== state.activeConvId) return c;
+          const msgs = [...c.messages];
+          if (msgs.length && msgs[msgs.length - 1].role === 'ai') {
+            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], thinkingContent: msgs[msgs.length - 1].thinkingContent + action.token };
+          }
+          return { ...c, messages: msgs };
+        })
       };
       break;
     }

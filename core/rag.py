@@ -112,9 +112,13 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     messages.append({"role": "user", "content": prompt})
 
     full_answer = ""
-    for token in chat_stream(messages):
-        full_answer += token
-        yield ("token", token)
+    for kind, text in chat_stream(messages):
+        if kind == "think":
+            full_answer += text
+            yield ("think", text)
+        else:
+            full_answer += text
+            yield ("token", text)
 
     # 质量兜底
     need_retry = False
@@ -134,8 +138,11 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
             retry_messages.extend(history)
         retry_messages.append({"role": "user", "content": prompt + f"\n\n（{retry_hint}）"})
         yield ("token", "\n[补充回答] ")
-        for token in chat_stream(retry_messages):
-            yield ("token", token)
+        for kind, text in chat_stream(retry_messages):
+            if kind == "think":
+                yield ("think", text)
+            else:
+                yield ("token", text)
 
     source_names = [Path(s).name for s in source_paths]
     yield ("sources", source_names)

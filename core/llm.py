@@ -67,10 +67,13 @@ def chat(messages: list[dict], temperature: float | None = None) -> str:
             "seed": LLM_CFG.seed,
         },
     )
-    return result["choices"][0]["message"]["content"]
+    msg = result["choices"][0]["message"]
+    # deepseek-reasoner 返回 reasoning_content
+    return msg.get("content") or msg.get("reasoning_content") or ""
 
 
 def chat_stream(messages: list[dict]):
+    """流式调用 LLM。yield ("token", text) 或 ("think", text)。"""
     if LLM_CFG.provider == "ollama":
         for line in _ollama_stream(
             f"{LLM_CFG.ollama_url}/api/chat",
@@ -87,7 +90,7 @@ def chat_stream(messages: list[dict]):
             try:
                 chunk = json.loads(line.decode("utf-8").strip())
                 if "message" in chunk and "content" in chunk["message"]:
-                    yield chunk["message"]["content"]
+                    yield ("token", chunk["message"]["content"])
             except (json.JSONDecodeError, KeyError):
                 continue
         return
@@ -111,7 +114,9 @@ def chat_stream(messages: list[dict]):
         try:
             chunk = json.loads(data)
             delta = chunk["choices"][0].get("delta", {})
-            if "content" in delta:
-                yield delta["content"]
+            if "reasoning_content" in delta:
+                yield ("think", delta["reasoning_content"])
+            elif "content" in delta:
+                yield ("token", delta["content"])
         except (json.JSONDecodeError, KeyError, IndexError):
             continue

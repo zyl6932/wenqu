@@ -452,14 +452,23 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._send_sse()
             try:
                 from core.llm import chat_stream
-                for token in chat_stream(llm_messages):
-                    self._sse_chunk({
-                        "id": request_id,
-                        "object": "chat.completion.chunk",
-                        "created": int(_time.time()),
-                        "model": "wenqu-v1",
-                        "choices": [{"index": 0, "delta": {"content": token}, "finish_reason": None}],
-                    })
+                for kind, text in chat_stream(llm_messages):
+                    if kind == "think":
+                        self._sse_chunk({
+                            "id": request_id,
+                            "object": "chat.completion.chunk",
+                            "created": int(_time.time()),
+                            "model": "wenqu-v1",
+                            "choices": [{"index": 0, "delta": {"reasoning_content": text}, "finish_reason": None}],
+                        })
+                    else:
+                        self._sse_chunk({
+                            "id": request_id,
+                            "object": "chat.completion.chunk",
+                            "created": int(_time.time()),
+                            "model": "wenqu-v1",
+                            "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}],
+                        })
                 self._sse_chunk({
                     "id": request_id,
                     "object": "chat.completion.chunk",
