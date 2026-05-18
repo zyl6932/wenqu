@@ -34,8 +34,9 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
     return <div className="mc-ai message-content"><span className="thinking-text">思考中</span></div>;
   }
 
-  const cls = isStreaming ? 'mc-ai message-content streaming-cursor' : 'mc-ai message-content';
   const html = renderMarkdown(content);
+  const showCursor = isStreaming && content;
+  const cls = showCursor ? 'mc-ai message-content streaming-cursor' : 'mc-ai message-content';
 
   if (!thinkingContent) {
     return <div ref={ref} className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
@@ -45,16 +46,11 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
 
   return (
     <div ref={ref} className={cls}>
-      <div className="think-card" onClick={() => setThinkOpen(v => !v)}>
-        <div className="think-card-header">
-          <span className={`think-arrow${thinkOpen ? ' open' : ''}`}>▸</span>
-          <span className="think-card-title">{headerText}</span>
-        </div>
-        <div className={`think-card-body${thinkOpen ? ' open' : ''}`}>
-          <div className="think-card-text">{thinkingContent}</div>
-        </div>
+      <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginBottom: 4, cursor: 'pointer' }} onClick={() => setThinkOpen(v => !v)}>
+        {headerText} {thinkOpen ? '▾' : '▸'}
       </div>
-      {content && <div className="think-answer" dangerouslySetInnerHTML={{ __html: html }} />}
+      {thinkOpen && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--ink-mute)', lineHeight: 1.6, marginBottom: 8 }}>{thinkingContent.replace(/^\s+/, '')}</div>}
+      {content && <div dangerouslySetInnerHTML={{ __html: html }} />}
     </div>
   );
 }

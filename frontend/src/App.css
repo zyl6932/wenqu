@@ -167,7 +167,7 @@ body {
   background:var(--gold); color:#fff;
   border-bottom-right-radius:2px;
 }
-.mc-ai { background:transparent; border:none; padding:4px 0; line-height:1.8; }
+.mc-ai { background:transparent; border:none; padding:0; line-height:1.5; }
 
 .msg-time { font-size:11px; color:var(--ink-mute); margin-top:2px; }
 .msg-time.user { text-align:right; }
@@ -247,10 +247,10 @@ pre:hover .code-copy-btn { opacity:1; }
 
 /* thinking */
 .think-card {
-  margin: 2px 0 4px;
+  margin: 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
+  border-radius: var(--radius);
+  background: var(--surface);
   overflow: hidden;
   cursor: pointer;
   user-select: none;
@@ -260,27 +260,24 @@ pre:hover .code-copy-btn { opacity:1; }
   border-color: var(--border-strong);
 }
 .think-card-header {
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 10px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px;
 }
 .think-arrow {
-  font-size: 9px; color: var(--ink-mute);
+  font-size: 10px; color: var(--ink-mute);
   transition: transform .2s; flex-shrink: 0;
 }
 .think-arrow.open { transform: rotate(90deg); }
 .think-card-title {
-  font-family: var(--serif); font-size: 11px;
+  font-family: var(--serif); font-size: 12px;
   color: var(--ink-mute);
 }
-.think-card-body {
-  max-height: 0; overflow: hidden;
-  transition: max-height .25s ease;
-}
-.think-card-body.open { max-height: 2000px; }
+.think-card-body { overflow: hidden; }
+.think-card-body:not(.open) { max-height: 0; }
 .think-card-text {
-  padding: 0 10px 6px;
-  white-space: pre-wrap; font-size: 12px;
-  color: var(--ink-soft); line-height: 1.6;
+  padding: 0 14px 12px;
+  white-space: pre-wrap; font-size: 13px;
+  color: var(--ink); line-height: 1.7;
   user-select: text; cursor: auto;
 }
 .think-answer {

@@ -100,7 +100,7 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     lines.append(f"语义检索：{trace.get('semantic_top', 0)} 个候选（最高相似度 {trace.get('top_score', 0)}）")
     lines.append(f"BM25 检索：{trace.get('bm25_top', 0)} 个候选")
     lines.append(f"RRF 融合：{trace.get('fused_count', 0)} 个候选 → 最终返回 {len(contexts)} 个片段")
-    yield ("thinking", "\n\n".join(lines))
+    yield ("thinking", "\n".join(lines))
 
     prompt = build_prompt(contexts, question)
 
