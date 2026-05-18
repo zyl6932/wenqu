@@ -22,7 +22,7 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, 
   return (
     <div className="message ai">
       <MessageContent role="ai" content={msg.content} isStreaming={isStreaming} />
-      {ts && <div className="msg-time" style={{ paddingLeft: 2 }}>{ts}</div>}
+      {ts && !(isLastAI && isStreaming) && <div className="msg-time" style={{ paddingLeft: 2 }}>{ts}</div>}
       <MessageSources sources={msg.sources} />
       <MessageActions
         question={prevQuestion}
