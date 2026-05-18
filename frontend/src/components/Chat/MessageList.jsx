@@ -19,6 +19,11 @@ export default function MessageList({ elapsed, isStreaming, onFillInput }) {
   // 新消息时滚动 + 流式输出时跟随滚动
   useEffect(() => { scrollToBottom(); }, [conv?.messages.length, lastContent, scrollToBottom]);
 
+  // 流式结束后补一次滚动（耗时/操作按钮出现可能改变高度）
+  useEffect(() => {
+    if (!isStreaming && elapsed) scrollToBottom();
+  }, [isStreaming, elapsed, scrollToBottom]);
+
   function handleScroll() {
     const el = containerRef.current;
     if (!el) return;
