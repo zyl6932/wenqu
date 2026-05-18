@@ -3,7 +3,7 @@ import { renderMarkdown } from '../../utils/markdown';
 
 export default function MessageContent({ role, content, thinkingContent, isStreaming, elapsed }) {
   const ref = useRef(null);
-  const [thinkOpen, setThinkOpen] = useState(true);
+  const [thinkOpen, setThinkOpen] = useState(false);
 
   useEffect(() => {
     if (role !== 'ai' || !ref.current) return;
