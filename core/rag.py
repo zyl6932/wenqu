@@ -81,6 +81,11 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
         return
 
     contexts, source_paths = result
+    source_names = [Path(s).name for s in source_paths]
+    # 先发来源，让前端展示思考过程
+    yield ("sources", source_names)
+    yield ("thinking", f"检索到 {len(contexts)} 个相关片段，来自 {len(source_names)} 个文档")
+
     prompt = build_prompt(contexts, question)
 
     system_msg = {"role": "system", "content": "你是一个严谨的知识库助手，仅根据提供的参考内容回答问题。如果参考内容中找不到答案，请直接说\"根据已有资料，我无法回答这个问题\"，不要编造。请用中文回答，简洁明了。"}
