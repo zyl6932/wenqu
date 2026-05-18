@@ -11,10 +11,11 @@ export default function ChatArea() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [elapsed, setElapsed] = useState(null);
   const [fillValue, setFillValue] = useState({ text: null, key: 0 });
+  const [atBottom, setAtBottom] = useState(true);
   const stopRef = useRef(null);
+  const msgListRef = useRef(null);
 
   const handleSend = useCallback((question) => {
-    // 在 dispatch 前捕获历史，避免闭包读取到过期状态
     const prevMessages = getActiveConv()?.messages || [];
     addSearchHistory(question);
 
@@ -58,7 +59,36 @@ export default function ChatArea() {
 
   return (
     <div className="main">
-      <MessageList elapsed={elapsed} isStreaming={isStreaming} onFillInput={(q) => setFillValue({ text: q, key: Date.now() })} />
+      <MessageList
+        ref={msgListRef}
+        elapsed={elapsed}
+        isStreaming={isStreaming}
+        onFillInput={(q) => setFillValue({ text: q, key: Date.now() })}
+        onScrollStateChange={setAtBottom}
+      />
+      {!atBottom && (
+        <div style={{ position: 'relative', zIndex: 6, display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              const el = document.querySelector('.chat-messages');
+              if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+            }}
+            style={{
+              position: 'absolute', bottom: 8,
+              width: 32, height: 32, borderRadius: '50%',
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              color: 'var(--ink-soft)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: 'var(--shadow)',
+            }}
+            title="回到底部"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+        </div>
+      )}
       <ChatInput
         onSend={handleSend}
         onStop={handleStop}

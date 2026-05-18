@@ -1,14 +1,12 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useConversation } from '../../context/ConversationContext';
 import MessageItem from './MessageItem';
 import EmptyChat from './EmptyChat';
-import ScrollToBottomBtn from './ScrollToBottomBtn';
 
-export default function MessageList({ elapsed, isStreaming, onFillInput }) {
+export default function MessageList({ elapsed, isStreaming, onFillInput, onScrollStateChange }) {
   const { getActiveConv, dispatch } = useConversation();
   const conv = getActiveConv();
   const containerRef = useRef(null);
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const lastContent = conv?.messages.length ? conv.messages[conv.messages.length - 1].content : '';
 
@@ -16,18 +14,22 @@ export default function MessageList({ elapsed, isStreaming, onFillInput }) {
     if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }, []);
 
+  const checkAtBottom = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }, []);
+
   // 新消息时滚动 + 流式输出时跟随滚动
   useEffect(() => { scrollToBottom(); }, [conv?.messages.length, lastContent, scrollToBottom]);
 
-  // 流式结束后补一次滚动（耗时/操作按钮出现可能改变高度）
+  // 流式结束后补一次滚动
   useEffect(() => {
     if (!isStreaming && elapsed) scrollToBottom();
   }, [isStreaming, elapsed, scrollToBottom]);
 
   function handleScroll() {
-    const el = containerRef.current;
-    if (!el) return;
-    setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 2000);
+    onScrollStateChange?.(checkAtBottom());
   }
 
   if (!conv || !conv.messages.length) {
@@ -40,7 +42,6 @@ export default function MessageList({ elapsed, isStreaming, onFillInput }) {
 
   return (
     <div className="chat-messages" ref={containerRef} onScroll={handleScroll}>
-      <ScrollToBottomBtn visible={showScrollBtn} onClick={scrollToBottom} />
       {conv.messages.map((m, idx) => {
         let prevQ = '';
         if (m.role === 'ai') {
