@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
 
-export default function MessageContent({ role, content, thinkingContent, isStreaming }) {
+export default function MessageContent({ role, content, thinkingContent, isStreaming, elapsed }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -47,6 +47,7 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
       <details className="thinking-block" open>
         <summary>思考过程</summary>
         <div className="thinking-body">{thinkingContent}</div>
+        {elapsed && <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 4, fontFamily: 'var(--serif)' }}>已思考（用时{elapsed}s）</div>}
       </details>
       {content && <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: html }} />}
     </div>

@@ -19,18 +19,20 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, 
     );
   }
 
+  const hasContent = !!msg.content;
   return (
     <div className="message ai">
-      <MessageContent role="ai" content={msg.content} thinkingContent={msg.thinkingContent} isStreaming={isStreaming} />
+      <MessageContent role="ai" content={msg.content} thinkingContent={msg.thinkingContent} isStreaming={isStreaming} elapsed={isLastAI ? elapsed : null} />
       {ts && !(isLastAI && isStreaming) && <div className="msg-time" style={{ paddingLeft: 2 }}>{ts}</div>}
-      <MessageSources sources={msg.sources} />
-      <MessageActions
-        question={prevQuestion}
-        contexts={[msg.content]}
-        onRegenerate={() => onRegenerate(prevQuestion)}
-        onDelete={onDelete}
-      />
-      {isLastAI && <ElapsedTime seconds={elapsed} />}
+      {hasContent && <MessageSources sources={msg.sources} />}
+      {hasContent && (
+        <MessageActions
+          question={prevQuestion}
+          contexts={[msg.content]}
+          onRegenerate={() => onRegenerate(prevQuestion)}
+          onDelete={onDelete}
+        />
+      )}
     </div>
   );
 }
