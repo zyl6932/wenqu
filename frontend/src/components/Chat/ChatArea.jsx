@@ -40,14 +40,14 @@ export default function ChatArea() {
       (elapsedStr, aborted) => {
         setIsStreaming(false);
         stopRef.current = null;
-        dispatch({ type: 'FINISH_AI_MSG' });
+        dispatch({ type: 'FINISH_AI_MSG', elapsed: aborted ? null : elapsedStr });
         if (!aborted) setElapsed(elapsedStr);
       },
       (err) => {
         setIsStreaming(false);
         stopRef.current = null;
         dispatch({ type: 'APPEND_TOKEN', token: `\n[${err}]` });
-        dispatch({ type: 'FINISH_AI_MSG' });
+        dispatch({ type: 'FINISH_AI_MSG', elapsed: null });
         addToast(err, 'error');
       }
     );

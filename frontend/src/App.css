@@ -246,6 +246,10 @@ pre:hover .code-copy-btn { opacity:1; }
 .quick-btn:hover { border-color:var(--vermilion); color:var(--vermilion); background:var(--primary-light); }
 
 /* thinking */
+.think-dots::after { content: ''; animation: thinkdots 1.5s infinite; }
+@keyframes thinkdots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} }
+
+/* input */
 .think-card {
   margin: 0;
   border: 1px solid var(--border);

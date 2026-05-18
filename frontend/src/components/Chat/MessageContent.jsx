@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
 
-export default function MessageContent({ role, content, thinkingContent, isStreaming, elapsed }) {
+export default function MessageContent({ role, content, thinkingContent, isStreaming, elapsed, msgElapsed }) {
   const ref = useRef(null);
   const [thinkOpen, setThinkOpen] = useState(false);
 
@@ -42,12 +42,13 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
     return <div ref={ref} className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
   }
 
-  const headerText = elapsed ? `已思考 · ${elapsed}s` : '思考中…';
+  const done = elapsed || msgElapsed;
+  const headerText = done ? `已思考 · ${done}s` : '思考中';
 
   return (
     <div ref={ref} className={cls}>
       <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginBottom: 4, cursor: 'pointer' }} onClick={() => setThinkOpen(v => !v)}>
-        {headerText} {thinkOpen ? '▾' : '▸'}
+        <span className={done ? '' : 'think-dots'}>{headerText}</span> {thinkOpen ? '▾' : '▸'}
       </div>
       {thinkOpen && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--ink-mute)', lineHeight: 1.6, marginBottom: 8 }}>{thinkingContent.replace(/^\s+/, '')}</div>}
       {content && <div dangerouslySetInnerHTML={{ __html: html }} />}

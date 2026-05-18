@@ -112,7 +112,7 @@ function convReducer(state, action) {
           if (c.id !== state.activeConvId) return c;
           const msgs = [...c.messages];
           if (msgs.length && msgs[msgs.length - 1].role === 'ai') {
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], timestamp: Date.now() };
+            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], timestamp: Date.now(), elapsed: action.elapsed };
           }
           return { ...c, messages: msgs };
         })
