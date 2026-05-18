@@ -65,7 +65,7 @@ export default function ChatArea() {
 
   return (
     <div className="main">
-      <MessageList elapsed={elapsed} onFillInput={handleFillInput} />
+      <MessageList elapsed={elapsed} isStreaming={isStreaming} onFillInput={handleFillInput} />
       <ChatInput
         onSend={handleSend}
         onStop={handleStop}

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
 
-export default function MessageContent({ role, content }) {
+export default function MessageContent({ role, content, isStreaming }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -29,8 +29,13 @@ export default function MessageContent({ role, content }) {
     return <div className="mc-user message-content">{content}</div>;
   }
 
+  if (!content) {
+    return <div className="mc-ai message-content"><span className="thinking-text">思考中</span></div>;
+  }
+
+  const cls = isStreaming ? 'mc-ai message-content streaming-cursor' : 'mc-ai message-content';
   const html = renderMarkdown(content);
   return (
-    <div ref={ref} className="mc-ai message-content" dangerouslySetInnerHTML={{ __html: html }} />
+    <div ref={ref} className={cls} dangerouslySetInnerHTML={{ __html: html }} />
   );
 }

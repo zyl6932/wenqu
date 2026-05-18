@@ -4,7 +4,7 @@ import MessageItem from './MessageItem';
 import EmptyChat from './EmptyChat';
 import ScrollToBottomBtn from './ScrollToBottomBtn';
 
-export default function MessageList({ elapsed, onFillInput }) {
+export default function MessageList({ elapsed, isStreaming, onFillInput }) {
   const { getActiveConv, dispatch } = useConversation();
   const conv = getActiveConv();
   const containerRef = useRef(null);
@@ -40,13 +40,15 @@ export default function MessageList({ elapsed, onFillInput }) {
             if (conv.messages[j].role === 'user') { prevQ = conv.messages[j].content; break; }
           }
         }
+        const lastAI = m.role === 'ai' && idx === conv.messages.length - 1;
         return (
           <MessageItem
             key={idx}
             msg={m}
             prevQuestion={prevQ}
-            isLastAI={m.role === 'ai' && idx === conv.messages.length - 1}
-            elapsed={m.role === 'ai' && idx === conv.messages.length - 1 ? elapsed : null}
+            isLastAI={lastAI}
+            isStreaming={lastAI && isStreaming}
+            elapsed={lastAI ? elapsed : null}
             onRegenerate={(q) => { if (q) { dispatch({ type: 'POP_LAST_AI' }); onFillInput(q); } }}
             onDelete={() => { if (confirm(`确定删除此消息？\n"${m.content.slice(0, 30)}${m.content.length > 30 ? '...' : ''}"`)) dispatch({ type: 'DELETE_MESSAGE', idx }); }}
           />

@@ -4,7 +4,7 @@ import MessageSources from './MessageSources';
 import MessageActions from './MessageActions';
 import ElapsedTime from './ElapsedTime';
 
-export default function MessageItem({ msg, prevQuestion, isLastAI, elapsed, onRegenerate, onDelete }) {
+export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, elapsed, onRegenerate, onDelete }) {
   const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
 
   if (msg.role === 'user') {
@@ -21,7 +21,7 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, elapsed, onRe
 
   return (
     <div className="message ai">
-      <MessageContent role="ai" content={msg.content} />
+      <MessageContent role="ai" content={msg.content} isStreaming={isStreaming} />
       {ts && <div className="msg-time" style={{ paddingLeft: 2 }}>{ts}</div>}
       <MessageSources sources={msg.sources} />
       <MessageActions
