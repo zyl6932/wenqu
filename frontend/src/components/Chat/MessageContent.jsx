@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { renderMarkdown } from '../../utils/markdown';
 
 export default function MessageContent({ role, content, thinkingContent, isStreaming, elapsed }) {
   const ref = useRef(null);
+  const [thinkOpen, setThinkOpen] = useState(true);
 
   useEffect(() => {
     if (role !== 'ai' || !ref.current) return;
@@ -29,7 +30,6 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
     return <div className="mc-user message-content">{content}</div>;
   }
 
-  // 有思考内容 OR 等待首个 token（思考中动画）
   if (!content && !thinkingContent) {
     return <div className="mc-ai message-content"><span className="thinking-text">思考中</span></div>;
   }
@@ -41,15 +41,20 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
     return <div ref={ref} className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
   }
 
-  // 有思考过程 + 可能有回答
+  const headerText = elapsed ? `已思考 · ${elapsed}s` : '思考中…';
+
   return (
-    <div ref={ref} className="mc-ai message-content">
-      <details className="thinking-block" open>
-        <summary>思考过程</summary>
-        <div className="thinking-body">{thinkingContent}</div>
-        {elapsed && <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 4, fontFamily: 'var(--serif)' }}>已思考（用时{elapsed}s）</div>}
-      </details>
-      {content && <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: html }} />}
+    <div ref={ref} className={cls}>
+      <div className="think-card" onClick={() => setThinkOpen(v => !v)}>
+        <div className="think-card-header">
+          <span className={`think-arrow${thinkOpen ? ' open' : ''}`}>▸</span>
+          <span className="think-card-title">{headerText}</span>
+        </div>
+        <div className={`think-card-body${thinkOpen ? ' open' : ''}`}>
+          <div className="think-card-text">{thinkingContent}</div>
+        </div>
+      </div>
+      {content && <div className="think-answer" dangerouslySetInnerHTML={{ __html: html }} />}
     </div>
   );
 }
