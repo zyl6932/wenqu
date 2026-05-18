@@ -3,15 +3,17 @@
 ## 技术栈
 - Python >= 3.10，核心零外部依赖（仅 pypdf 可选）
 - 嵌入：Ollama + bge-m3
-- LLM：DeepSeek API 或 Ollama 本地模型
+- LLM：DeepSeek API 或 Ollama 本地模型（支持 deepseek-reasoner 思考链）
 - 存储：SQLite
-- 前端：Vanilla HTML/CSS/JS（无框架）
+- 前端：React 18 + Vite 5，原版 vanilla HTML 保留为回退
 
 ## 常用命令
 ```bash
-python server.py          # 启动服务 (localhost:8080)
-python run_tests.py       # 运行测试 (27 tests)
-pip install -r requirements.txt  # 安装依赖
+python server.py                  # 启动服务 (localhost:8080)
+python run_tests.py               # 运行测试 (33 tests)
+cd frontend && npm run build      # 构建 React 前端
+pip install -r requirements.txt   # 安装 Python 依赖
+cd frontend && npm install        # 安装前端依赖
 ```
 
 ## 标准工作流
@@ -43,31 +45,89 @@ gh release create vX.Y.Z --title "vX.Y.Z - 简述" --notes-file CHANGELOG.md
 ## 项目结构
 ```
 wenqu/
-├── server.py          # Web 服务器（入口）
+├── server.py            # Web 服务器入口
 ├── core/
-│   ├── config.py      # 配置管理 + .env 加载
-│   ├── chunker.py     # 文档分块/摘要/关键词
-│   ├── embed.py       # Ollama 向量化
-│   ├── llm.py         # LLM 调用（DeepSeek/Ollama）
-│   ├── parser.py      # 多格式文档解析
-│   ├── rag.py         # RAG 编排层
-│   ├── retrieve.py    # 混合检索（向量+BM25+RRF）
-│   └── storage.py     # SQLite 存储
-├── static/index.html  # Web 前端
-├── tests/test_core.py # 测试用例
-├── docs/              # 待导入文档（二进制不入库）
-├── data/              # 向量数据库（不入库）
-├── .env.example       # 环境变量模板
-└── CHANGELOG.md       # 更新记录
+│   ├── chunker.py       # 文档分块/摘要/关键词
+│   ├── config.py        # 配置管理 + .env 加载
+│   ├── embed.py         # Ollama 向量化
+│   ├── llm.py           # LLM 调用（DeepSeek/Ollama）
+│   ├── parser.py        # 多格式文档解析
+│   ├── rag.py           # RAG 编排层
+│   ├── retrieve.py      # 混合检索（向量+BM25+RRF）
+│   └── storage.py       # SQLite 存储
+├── frontend/src/        # React 前端源码
+├── static/index.html    # 原版前端（回退用）
+├── static/dist/         # React 构建产物
+├── tests/test_core.py   # 33 个测试用例
+├── docs/                # 待导入文档
+├── data/                # 向量数据库（不入库）
+├── CLAUDE.md            # 项目工作流
+├── CHANGELOG.md         # 版本更新记录
+└── API.md
 ```
 
 ## 配置方式
 环境变量通过 `.env` 文件设置（自动加载），关键变量：
 - `LLM_PROVIDER` — `deepseek` 或 `ollama`
+- `DEEPSEEK_MODEL` — `deepseek-chat` / `deepseek-reasoner` (R1 思考链)
 - `DEEPSEEK_KEY` — API Key（ollama 模式无需）
 - `ENABLE_QUERY_REWRITE` — 查询改写开关
 
 ## 代码风格
 - Python：类型注解、dataclass、无注释（命名自解释）
-- 前端：Vanilla JS，无框架依赖
+- 前端：React JSX，无 TypeScript
 - 不引入不必要的抽象或依赖
+
+---
+
+# 行为准则
+
+> 源自 Andrej Karpathy 对 LLM 编码陷阱的观察。偏向谨慎而非速度，琐碎任务自行判断。
+
+## 1. 编码前思考
+
+**不要假设。不要隐藏困惑。呈现权衡。**
+
+- 明确说明假设 — 如果不确定，询问而不是猜测
+- 存在歧义时呈现多种解释，不要默默选择
+- 如果有更简单的方法，说出来。适时提出异议
+- 不清楚的地方停下来，指出困惑并要求澄清
+
+## 2. 简洁优先
+
+**用最少的代码解决问题。不过度推测。**
+
+- 不添加要求之外的功能
+- 不为一次性代码创建抽象
+- 不添加未要求的"灵活性"或"可配置性"
+- 不为不可能发生的场景做错误处理
+- 如果 200 行可以写成 50 行，重写它
+
+**检验标准：** 资深工程师会觉得这过于复杂吗？如果是，简化。
+
+## 3. 精准修改
+
+**只碰必须碰的。只清理自己造成的混乱。**
+
+- 不"改进"相邻的代码、注释或格式
+- 不重构没坏的东西
+- 匹配现有风格，即使你更倾向于不同的写法
+- 注意到无关的死代码时提一下，不要删除
+- 删除因你的改动而变得无用的导入/变量/函数
+- 每一行修改都应该能直接追溯到用户的请求
+
+## 4. 目标驱动执行
+
+**定义成功标准。循环验证直到达成。**
+
+- "添加验证" → "为无效输入编写测试，然后让它们通过"
+- "修复 bug" → "编写重现 bug 的测试，然后让它通过"
+- "重构 X" → "确保重构前后测试都能通过"
+
+多步骤任务先列计划：
+```
+1. [步骤] → 验证: [检查]
+2. [步骤] → 验证: [检查]
+```
+
+**这些准则生效的标志：** diff 中不必要的改动更少、因过度复杂而导致的重写更少、澄清问题在实现之前提出而非犯错之后。
