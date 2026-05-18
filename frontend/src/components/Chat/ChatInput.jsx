@@ -3,7 +3,7 @@ import { useAutoResize } from '../../hooks/useAutoResize';
 import { useConversation } from '../../context/ConversationContext';
 import SearchHistoryDropdown from './SearchHistoryDropdown';
 
-export default function ChatInput({ onSend, onStop, isStreaming, inputRef }) {
+export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inputRef }) {
   const [value, setValue] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -14,6 +14,19 @@ export default function ChatInput({ onSend, onStop, isStreaming, inputRef }) {
   useEffect(() => {
     if (inputRef) inputRef.current = textareaRef.current;
   }, [inputRef]);
+
+  useEffect(() => {
+    if (fillValue?.text) {
+      setValue(fillValue.text);
+      setShowHistory(false);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          autoResize(textareaRef.current);
+        }
+      }, 0);
+    }
+  }, [fillValue?.key]);
 
   const history = getSearchHistory();
 

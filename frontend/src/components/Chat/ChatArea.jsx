@@ -10,8 +10,8 @@ export default function ChatArea() {
   const { addToast } = useToast();
   const [isStreaming, setIsStreaming] = useState(false);
   const [elapsed, setElapsed] = useState(null);
+  const [fillValue, setFillValue] = useState({ text: null, key: 0 });
   const stopRef = useRef(null);
-  const inputRef = useRef(null);
 
   const handleSend = useCallback((question) => {
     // 在 dispatch 前捕获历史，避免闭包读取到过期状态
@@ -56,21 +56,14 @@ export default function ChatArea() {
     setIsStreaming(false);
   }, []);
 
-  const handleFillInput = useCallback((q) => {
-    if (inputRef.current) {
-      inputRef.current.value = q;
-      inputRef.current.focus();
-    }
-  }, []);
-
   return (
     <div className="main">
-      <MessageList elapsed={elapsed} isStreaming={isStreaming} onFillInput={handleFillInput} />
+      <MessageList elapsed={elapsed} isStreaming={isStreaming} onFillInput={(q) => setFillValue({ text: q, key: Date.now() })} />
       <ChatInput
         onSend={handleSend}
         onStop={handleStop}
         isStreaming={isStreaming}
-        inputRef={inputRef}
+        fillValue={fillValue}
       />
     </div>
   );
