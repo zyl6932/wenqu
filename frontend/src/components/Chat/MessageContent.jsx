@@ -42,12 +42,11 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
   }
 
   // 有思考过程 + 可能有回答
-  const thinkHtml = renderMarkdown(thinkingContent);
   return (
     <div ref={ref} className="mc-ai message-content">
       <details className="thinking-block" open>
         <summary>思考过程</summary>
-        <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{thinkingContent}</div>
+        <div className="thinking-body">{thinkingContent}</div>
       </details>
       {content && <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: html }} />}
     </div>
