@@ -1,17 +1,21 @@
 """
-数据存储层 — SQLite + JSON向量
-模仿 RAGFlow internal/ 的分层：DAO → 业务逻辑完全隔离
+数据存储层 — SQLite + JSON向量（WAL 模式，线程安全）
 """
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from .config import STORAGE_CFG
 
+_pool_lock = threading.Lock()
+_pool: dict[int, sqlite3.Connection] = {}
 
-def get_db() -> sqlite3.Connection:
-    """获取数据库连接 — 唯一的 DB 入口"""
-    STORAGE_CFG.data_dir.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(STORAGE_CFG.data_dir / "vectors.db"))
+
+def _init_conn(conn: sqlite3.Connection):
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("""CREATE TABLE IF NOT EXISTS chunks (
         id INTEGER PRIMARY KEY,
         source TEXT,
@@ -31,6 +35,18 @@ def get_db() -> sqlite3.Connection:
     )""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source)")
     conn.commit()
+
+
+def get_db() -> sqlite3.Connection:
+    """线程安全的数据库连接（WAL 模式，连接复用）"""
+    tid = threading.get_ident()
+    with _pool_lock:
+        conn = _pool.get(tid)
+        if conn is None:
+            STORAGE_CFG.data_dir.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(str(STORAGE_CFG.data_dir / "vectors.db"), check_same_thread=False)
+            _init_conn(conn)
+            _pool[tid] = conn
     return conn
 
 
@@ -134,8 +150,9 @@ def source_exists(path: str) -> bool:
 
 
 def insert_source(path: str):
-    get_db().execute("INSERT INTO sources (path) VALUES (?)", (path,))
-    get_db().commit()
+    db = get_db()
+    db.execute("INSERT INTO sources (path) VALUES (?)", (path,))
+    db.commit()
 
 
 def delete_source(path: str):
@@ -160,11 +177,12 @@ def overview_sources() -> list[tuple[str, str]]:
 # ── 反馈 ──────────────────────────────────────────
 
 def save_feedback(question: str, chunk_prefix: str, helpful: int):
-    get_db().execute(
+    db = get_db()
+    db.execute(
         "INSERT INTO feedback (question, chunk_prefix, helpful) VALUES (?, ?, ?)",
         (question, chunk_prefix, helpful),
     )
-    get_db().commit()
+    db.commit()
 
 
 def get_feedback_boost(chunk_text: str) -> float:

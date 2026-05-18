@@ -5,15 +5,33 @@
 """
 import json
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, parse_qs
 
+MAX_WORKERS = 32  # 线程池上限
 
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    """多线程 HTTP 服务器，避免单请求阻塞整个服务。"""
+
+class ThreadingHTTPServer(HTTPServer):
+    """线程池 HTTP 服务器，有界并发，避免线程爆炸。"""
     daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self._executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        self._executor.submit(self.process_request_thread, request, client_address)
+
+    def process_request_thread(self, request, client_address):
+        try:
+            self.finish_request(request, client_address)
+        except Exception:
+            self.handle_error(request, client_address)
+        finally:
+            self.shutdown_request(request)
 
 # 错误日志
 LOG_DIR = Path(__file__).parent / "logs"

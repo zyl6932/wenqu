@@ -2,26 +2,29 @@
 向量嵌入层 — Ollama / 未来可切换为 OpenAI / 本地模型
 """
 import json
+import threading
 import urllib.request
 from .config import EMBED_CFG
 
 _embed_cache: dict[str, list[float]] = {}
+_cache_lock = threading.Lock()
 
 
 def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
-    """批量向量化，带内存缓存"""
+    """批量向量化，线程安全的带内存缓存"""
     bs = batch_size or EMBED_CFG.batch_size
     results: list[list[float] | None] = [None] * len(texts)
     uncached_idx: list[int] = []
     uncached_texts: list[str] = []
 
-    for i, t in enumerate(texts):
-        key = t[:200]
-        if key in _embed_cache:
-            results[i] = _embed_cache[key]
-        else:
-            uncached_idx.append(i)
-            uncached_texts.append(t)
+    with _cache_lock:
+        for i, t in enumerate(texts):
+            key = t[:200]
+            if key in _embed_cache:
+                results[i] = _embed_cache[key]
+            else:
+                uncached_idx.append(i)
+                uncached_texts.append(t)
 
     if uncached_texts:
         new_embs = []
@@ -33,9 +36,10 @@ def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
             with urllib.request.urlopen(req, timeout=120) as resp:
                 result = json.loads(resp.read())
             new_embs.extend(result["embeddings"])
-        for idx, emb in zip(uncached_idx, new_embs):
-            results[idx] = emb
-            _embed_cache[uncached_texts[uncached_idx.index(idx)][:200]] = emb
+        with _cache_lock:
+            for idx, emb in zip(uncached_idx, new_embs):
+                results[idx] = emb
+                _embed_cache[uncached_texts[uncached_idx.index(idx)][:200]] = emb
 
     return results  # type: ignore
 

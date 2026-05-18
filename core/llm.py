@@ -2,8 +2,11 @@
 LLM 调用层 — 支持 DeepSeek API 和 Ollama 本地模型
 """
 import json
+import threading
 import urllib.request
 from .config import LLM_CFG
+
+_llm_semaphore = threading.BoundedSemaphore(10)  # 最多 10 个并发 LLM 请求
 
 
 def _deepseek_post(url: str, data: dict) -> dict:
@@ -43,6 +46,11 @@ def _ollama_stream(url: str, data: dict):
 
 
 def chat(messages: list[dict], temperature: float | None = None) -> str:
+    with _llm_semaphore:
+        return _chat(messages, temperature)
+
+
+def _chat(messages: list[dict], temperature: float | None = None) -> str:
     if LLM_CFG.provider == "ollama":
         result = _ollama_post(
             f"{LLM_CFG.ollama_url}/api/chat",
@@ -74,6 +82,14 @@ def chat(messages: list[dict], temperature: float | None = None) -> str:
 
 def chat_stream(messages: list[dict]):
     """流式调用 LLM。yield ("token", text) 或 ("think", text)。"""
+    _llm_semaphore.acquire()
+    try:
+        yield from _chat_stream(messages)
+    finally:
+        _llm_semaphore.release()
+
+
+def _chat_stream(messages: list[dict]):
     if LLM_CFG.provider == "ollama":
         for line in _ollama_stream(
             f"{LLM_CFG.ollama_url}/api/chat",
