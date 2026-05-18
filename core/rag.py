@@ -87,19 +87,19 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
 
     # 构建完整思考过程
     lines = []
-    lines.append(f"**原始问题：** {trace.get('original', question)}")
+    lines.append(f"原始问题：{trace.get('original', question)}")
     if trace.get("corrected"):
-        lines.append(f"**拼写纠错：** {trace['corrected']}")
+        lines.append(f"拼写纠错：{trace['corrected']}")
     if trace.get("expanded"):
-        lines.append(f"**查询扩展：** {trace['expanded']}")
+        lines.append(f"查询扩展：{trace['expanded']}")
     if trace.get("rewritten"):
-        lines.append(f"**查询改写：** {trace['rewritten']}")
-    lines.append(f"**检索范围：** {trace.get('total_chunks', 0)} 个向量块")
+        lines.append(f"查询改写：{trace['rewritten']}")
+    lines.append(f"检索范围：{trace.get('total_chunks', 0)} 个向量块")
     if trace.get("docs_matched"):
-        lines.append(f"**匹配文档：** {', '.join(trace['docs_matched'])}")
-    lines.append(f"**语义检索：** {trace.get('semantic_top', 0)} 个候选（最高相似度 {trace.get('top_score', 0)}）")
-    lines.append(f"**BM25 检索：** {trace.get('bm25_top', 0)} 个候选")
-    lines.append(f"**RRF 融合：** {trace.get('fused_count', 0)} 个候选 → 最终返回 {len(contexts)} 个片段")
+        lines.append(f"匹配文档：{', '.join(trace['docs_matched'])}")
+    lines.append(f"语义检索：{trace.get('semantic_top', 0)} 个候选（最高相似度 {trace.get('top_score', 0)}）")
+    lines.append(f"BM25 检索：{trace.get('bm25_top', 0)} 个候选")
+    lines.append(f"RRF 融合：{trace.get('fused_count', 0)} 个候选 → 最终返回 {len(contexts)} 个片段")
     yield ("thinking", "\n\n".join(lines))
 
     prompt = build_prompt(contexts, question)
