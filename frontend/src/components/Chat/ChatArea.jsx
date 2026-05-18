@@ -43,6 +43,8 @@ export default function ChatArea() {
       (err) => {
         setIsStreaming(false);
         stopRef.current = null;
+        dispatch({ type: 'APPEND_TOKEN', token: `\n[${err}]` });
+        dispatch({ type: 'FINISH_AI_MSG' });
         addToast(err, 'error');
       }
     );

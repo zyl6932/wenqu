@@ -1,16 +1,25 @@
 const BASE = '';
 
+function friendlyErr(err) {
+  if (err.message === 'Failed to fetch') return new Error('无网络连接，请检查网络后重试');
+  return err;
+}
+
 async function request(method, path, body, opts = {}) {
-  const init = { method, headers: { 'Content-Type': 'application/json' }, ...opts };
-  if (body && !init.body) init.body = JSON.stringify(body);
-  const res = await fetch(`${BASE}${path}`, init);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok && data.error) {
-    if (typeof data.error === 'string') throw new Error(data.error);
-    if (data.error.message) throw new Error(data.error.message);
-    throw new Error(`HTTP ${res.status}`);
+  try {
+    const init = { method, headers: { 'Content-Type': 'application/json' }, ...opts };
+    if (body && !init.body) init.body = JSON.stringify(body);
+    const res = await fetch(`${BASE}${path}`, init);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok && data.error) {
+      if (typeof data.error === 'string') throw new Error(data.error);
+      if (data.error.message) throw new Error(data.error.message);
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return data;
+  } catch (e) {
+    throw friendlyErr(e);
   }
-  return data;
 }
 
 export function askStream(question, history, signal, onToken, onSources, onDone, onError) {
@@ -51,7 +60,7 @@ export function askStream(question, history, signal, onToken, onSources, onDone,
       onDone(elapsed);
     } catch (err) {
       if (err.name === 'AbortError') onDone(null, true);
-      else onError(err.message);
+      else onError(friendlyErr(err).message);
     } finally {
       clearTimeout(timeoutId);
     }
