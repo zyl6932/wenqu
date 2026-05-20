@@ -5,7 +5,18 @@ const ACTIVE_KEY = 'wenqu_active_conv';
 const HISTORY_KEY = 'wenqu_search_history';
 
 function loadConversations() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+  try {
+    const convs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    // 清理僵尸消息：刷新中断导致 AI 消息无内容无耗时
+    for (const c of convs) {
+      if (!c.messages?.length) continue;
+      const last = c.messages[c.messages.length - 1];
+      if (last && last.role === 'ai' && !last.content && !last.elapsed) {
+        last.content = '[生成被中断，请重新发送问题]';
+      }
+    }
+    return convs;
+  } catch { return []; }
 }
 function saveConversations(convs) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(convs)); } catch {}
