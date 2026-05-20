@@ -13,6 +13,7 @@ function loadConversations() {
       const last = c.messages[c.messages.length - 1];
       if (last && last.role === 'ai' && !last.content && !last.elapsed) {
         last.content = '[生成被中断，请重新发送问题]';
+        last.thinkingContent = '';
       }
     }
     return convs;
