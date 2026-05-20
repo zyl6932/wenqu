@@ -119,7 +119,7 @@ body {
   color:var(--ink-mute); text-transform:uppercase;
 }
 .doc-section-header:hover h3 { color:var(--vermilion); }
-.doc-list-wrap { overflow-y:auto; padding:0 6px 6px; flex:1; }
+.doc-list-wrap { overflow-y:auto; padding:0 6px 6px; max-height:200px; }
 .doc-item {
   display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:var(--radius);
   font-size:12px; cursor:pointer; transition:background .1s;
@@ -162,7 +162,7 @@ body {
 @keyframes fadeUp { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
 .message.user { align-self:flex-end; }
 .message.ai { align-self:flex-start; }
-.message-content { padding:10px 16px; border-radius:var(--radius); font-size:14px; line-height:1.7; word-break:break-word; }
+.message-content { padding:10px 16px; border-radius:var(--radius); font-size:var(--font-size, 14px); line-height:1.7; word-break:break-word; }
 .mc-user {
   background:var(--gold); color:#fff;
   border-bottom-right-radius:2px;
