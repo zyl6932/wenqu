@@ -66,8 +66,13 @@ export default function ChatArea() {
     return () => window.removeEventListener('beforeunload', handler);
   }, []);
 
+  const conv = getActiveConv();
+
   return (
     <div className="main">
+      <div className="chat-header">
+        <span className="chat-header-title">{conv?.title || '问渠'}</span>
+      </div>
       <MessageList
         ref={msgListRef}
         elapsed={elapsed}
