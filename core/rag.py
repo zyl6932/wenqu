@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .config import STORAGE_CFG, RETRIEVAL_CFG
 from .llm import chat, chat_stream
-from .chunker import estimate_tokens, clean_text, split_text, build_overview, extract_keywords
+from .chunker import estimate_tokens, clean_text, split_text, split_with_structure, build_overview, extract_keywords
 from .embed import embed_single, clear_cache
 from .storage import (
     count_chunks, count_sources, insert_chunk, update_chunk_text,
@@ -181,34 +181,42 @@ def import_docs():
             print(f"  无有效内容: {fp.name}")
             continue
 
-        chunks = split_text(text)
-        if not chunks:
+        structured = split_with_structure(text)
+        if not structured:
             print(f"  无有效内容: {fp.name}")
             continue
 
         # 去重
         seen_prefix: set[str] = set()
-        unique_chunks = [c for c in chunks if (key := c[:80].strip()) not in seen_prefix and not seen_prefix.add(key)]
+        unique = [c for c in structured if (key := c["text"][:80].strip()) not in seen_prefix and not seen_prefix.add(key)]
 
         # 概览 + 摘要
         overview = build_overview(text)
         if overview:
-            unique_chunks.insert(0, overview)
+            unique.insert(0, {"text": overview, "level": 0, "heading": ""})
         try:
             summary = chat([
                 {"role": "system", "content": "你是一个文档摘要助手。用2-3句话概括文档核心内容，输出纯文本。"},
                 {"role": "user", "content": f"请为以下文档生成简短摘要（50字以内）：\n\n{text[:2000]}"},
             ])
             if summary and len(summary) > 10:
-                unique_chunks.insert(0, f"【文档摘要】{summary}")
+                unique.insert(0, {"text": f"【文档摘要】{summary}", "level": 0, "heading": ""})
         except Exception:
             pass
 
-        print(f"  向量化 {fp.name} ({len(unique_chunks)} 块)...", end=" ", flush=True)
+        # 建立父子关系：最近的一级标题作为父节点
+        texts = [c["text"] for c in unique]
+        parent_ids: dict[str, int] = {}  # heading -> parent chunk id
+        print(f"  向量化 {fp.name} ({len(texts)} 块)...", end=" ", flush=True)
         from .embed import embed
-        embeddings = embed(unique_chunks)
-        for chunk, emb in zip(unique_chunks, embeddings):
-            insert_chunk(path, chunk, emb)
+        embeddings = embed(texts)
+        for c, emb in zip(unique, embeddings):
+            level = c["level"]
+            heading = c["heading"]
+            pid = parent_ids.get(heading) if heading and level > 0 else None
+            cid = insert_chunk(path, c["text"], emb, level, pid)
+            if level == 1 and heading:
+                parent_ids[heading] = cid
         insert_source(path)
         print("完成")
 

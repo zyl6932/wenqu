@@ -20,8 +20,14 @@ def _init_conn(conn: sqlite3.Connection):
         id INTEGER PRIMARY KEY,
         source TEXT,
         text TEXT,
-        embedding BLOB
+        embedding BLOB,
+        level INTEGER DEFAULT 0,
+        parent_id INTEGER DEFAULT NULL
     )""")
+    # 兼容旧表：如果缺少新列则添加
+    for col, typ in [("level", "INTEGER DEFAULT 0"), ("parent_id", "INTEGER DEFAULT NULL")]:
+        try: conn.execute(f"ALTER TABLE chunks ADD COLUMN {col} {typ}")
+        except: pass
     conn.execute("""CREATE TABLE IF NOT EXISTS sources (
         path TEXT PRIMARY KEY,
         added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -95,14 +101,30 @@ def load_chunks_except(sources: list[str]) -> list[tuple[int, str, str, str]]:
     ).fetchall()
 
 
-def insert_chunk(source: str, text: str, embedding: list[float]) -> int:
+def insert_chunk(source: str, text: str, embedding: list[float], level: int = 0, parent_id: int | None = None) -> int:
     db = get_db()
     cur = db.execute(
-        "INSERT INTO chunks (source, text, embedding) VALUES (?, ?, ?)",
-        (source, text, json.dumps(embedding)),
+        "INSERT INTO chunks (source, text, embedding, level, parent_id) VALUES (?, ?, ?, ?, ?)",
+        (source, text, json.dumps(embedding), level, parent_id),
     )
     db.commit()
     return cur.lastrowid
+
+
+def get_parent_chunk(chunk_id: int) -> tuple | None:
+    """返回父块 (id, source, text) 或 None"""
+    db = get_db()
+    child = db.execute("SELECT parent_id FROM chunks WHERE id = ?", (chunk_id,)).fetchone()
+    if not child or not child[0]:
+        return None
+    return db.execute("SELECT id, source, text FROM chunks WHERE id = ?", (child[0],)).fetchone()
+
+
+def get_child_chunks(parent_id: int) -> list[tuple[int, str, str]]:
+    """返回所有子块"""
+    return get_db().execute(
+        "SELECT id, source, text FROM chunks WHERE parent_id = ? ORDER BY id", (parent_id,)
+    ).fetchall()
 
 
 def update_chunk_text(chunk_id: int, text: str, embedding: list[float]):

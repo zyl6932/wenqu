@@ -197,6 +197,47 @@ def semantic_split(text: str, max_tokens: int | None = None) -> list[str]:
     return final if final else split_text(text, mt)
 
 
+# ── 层级检测 ──────────────────────────────────────
+HEADING_RE = re.compile(
+    r"^(第[一二三四五六七八九十\d]+[章节部篇]|[\d]+\.[\d]+(\.[\d]+)?|[一二三四五六七八九十]+[、)）.])\s*"
+)
+
+def _detect_level(line: str) -> int:
+    """返回标题层级：0=正文, 1=一级标题, 2=二级/三级标题"""
+    line = line.strip()
+    if not line:
+        return 0
+    # 一级：第X章、第X节、数字开头的大标题
+    if re.match(r"^(第[一二三四五六七八九十\d]+[章节部篇]|\d+\.\s+[^\d])", line):
+        return 1
+    # 二级：x.x、x.x.x、(一) 等
+    if re.match(r"^(\d+\.\d+|\([一二三四五]\)|[一二三四五]、)", line):
+        return 2
+    return 0
+
+
+def split_with_structure(text: str, max_tokens: int | None = None) -> list[dict]:
+    """分块并保留层级结构。返回 [{text, level, heading}]"""
+    mt = max_tokens or RETRIEVAL_CFG.chunk_max_tokens
+    chunks = split_text(text, mt)
+    result = []
+    last_heading_l1 = ""
+    for c in chunks:
+        lines = c.split("\n")
+        level = 0
+        heading = ""
+        for line in lines:
+            lv = _detect_level(line)
+            if lv > 0:
+                level = lv
+                heading = line.strip()[:80]
+                if lv == 1:
+                    last_heading_l1 = heading
+                break
+        result.append({"text": c, "level": level, "heading": heading or last_heading_l1})
+    return result
+
+
 # ── 关键词 ──────────────────────────────────────────
 def extract_keywords(text: str, top_n: int = 5) -> list[str]:
     cn_words = re.findall(r"[一-鿿]{2,6}", text)

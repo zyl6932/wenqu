@@ -346,11 +346,18 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
         return None
 
     top = fused
-    from .storage import get_adjacent_chunks
+    from .storage import get_adjacent_chunks, get_parent_chunk
     expanded_ids: set[int] = set()
     contexts_by_score: list[tuple[float, list[str]]] = []
     for score, chunk_id, _, source in top:
         group = get_adjacent_chunks(chunk_id, source, ex)
+        # 父节点扩展：命中子块时，自动带出父级标题块
+        parent = get_parent_chunk(chunk_id)
+        if parent and parent[2] not in (group if group else []):
+            if group:
+                group.insert(0, parent[2])
+            else:
+                group = [parent[2]]
         if group:
             contexts_by_score.append((score, group))
 
