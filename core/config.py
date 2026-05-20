@@ -110,3 +110,22 @@ def load_config() -> tuple[LLMConfig, EmbedConfig, VisionConfig, RetrievalConfig
 
 # 全局配置单例
 LLM_CFG, EMBED_CFG, VISION_CFG, RETRIEVAL_CFG, STORAGE_CFG, SERVER_CFG = load_config()
+
+# 运行时覆写（通过 /api/config 修改，服务重启后恢复默认值）
+_runtime_overrides: dict = {}
+
+def get_runtime_config() -> dict:
+    return {
+        "min_similarity": _runtime_overrides.get("min_similarity", RETRIEVAL_CFG.min_similarity),
+        "top_k": _runtime_overrides.get("top_k", RETRIEVAL_CFG.top_k),
+        "enable_query_rewrite": _runtime_overrides.get("enable_query_rewrite", RETRIEVAL_CFG.enable_query_rewrite),
+    }
+
+def apply_runtime_overrides():
+    """将运行时覆写应用到全局配置"""
+    if "min_similarity" in _runtime_overrides:
+        RETRIEVAL_CFG.min_similarity = float(_runtime_overrides["min_similarity"])
+    if "top_k" in _runtime_overrides:
+        RETRIEVAL_CFG.top_k = int(_runtime_overrides["top_k"])
+    if "enable_query_rewrite" in _runtime_overrides:
+        RETRIEVAL_CFG.enable_query_rewrite = _runtime_overrides["enable_query_rewrite"] in (True, "1", "true", "True")

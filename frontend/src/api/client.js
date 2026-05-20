@@ -109,3 +109,7 @@ export async function uploadFile(formData) {
   const res = await fetch(`${BASE}/api/upload`, { method: 'POST', body: formData });
   return res.json();
 }
+
+export const fetchConfig = () => request('GET', '/api/config');
+
+export const updateConfig = (cfg) => request('POST', '/api/config', cfg);

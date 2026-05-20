@@ -83,7 +83,7 @@ from core.rag import (
 from core.storage import delete_source as delete_doc
 from core.storage import count_sources, get_db
 from core.retrieve import retrieve
-from core.config import EMBED_CFG, SERVER_CFG
+from core.config import EMBED_CFG, SERVER_CFG, get_runtime_config, _runtime_overrides, apply_runtime_overrides
 
 STATIC_DIR = Path(__file__).parent / "static"
 REACT_DIST = STATIC_DIR / "dist"
@@ -106,6 +106,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._handle_doc_content()
         elif path == "/api/chunks":
             self._handle_list_chunks()
+        elif path == "/api/config":
+            self._json(get_runtime_config())
         elif path == "/api/health":
             self._json({"status": "ok"})
         elif path == "/api/health/full":
@@ -141,6 +143,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._handle_split_chunk()
         elif path == "/api/chunks/merge":
             self._handle_merge_chunks()
+        elif path == "/api/config":
+            self._handle_config_update()
         elif path == "/api/feedback":
             self._handle_feedback()
         elif path == "/api/upload":
@@ -582,6 +586,19 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"id": "wenqu-v1", "object": "model", "owned_by": "wenqu"},
             ]
         })
+
+    def _handle_config_update(self):
+        data = self._read_body()
+        changed = False
+        for key in ("min_similarity", "top_k", "enable_query_rewrite"):
+            if key in data:
+                _runtime_overrides[key] = data[key]
+                changed = True
+        if changed:
+            apply_runtime_overrides()
+            from core.retrieve import clear_cache
+            clear_cache()
+        self._json({"config": get_runtime_config(), "message": "已更新" if changed else "无变更"})
 
     def _handle_feedback(self):
         data = self._read_body()
