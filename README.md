@@ -116,6 +116,174 @@ wenqu/
 └── API.md
 ```
 
+## Architecture
+
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           Browser                                   │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │              React 18 SPA (Vite 5, 48 components)             │  │
+│  │  ThemeContext / ToastContext / ConversationContext (useReducer) │  │
+│  │  SSE streaming · Markdown · Dark/Light · Drag-drop upload      │  │
+│  └──────────────────────────┬────────────────────────────────────┘  │
+└─────────────────────────────┼───────────────────────────────────────┘
+                              │ HTTP/SSE (localhost:8080)
+┌─────────────────────────────┼───────────────────────────────────────┐
+│                        Python Server (stdlib only)                   │
+│  ┌──────────────────────────┴────────────────────────────────────┐  │
+│  │               server.py  (ThreadPoolExecutor, 32 workers)      │  │
+│  │  /api/ask · /api/ask/stream · /v1/chat/completions · /api/docs │  │
+│  └──────┬──────────┬──────────┬──────────┬────────────────────────┘  │
+│         │          │          │          │                           │
+│    ┌────▼───┐ ┌───▼────┐ ┌──▼───┐ ┌───▼─────┐                      │
+│    │  rag   │ │retrieve│ │embed │ │storage  │                      │
+│    │ 编排层  │ │ 检索层  │ │向量化 │ │ 持久层   │                      │
+│    └───┬────┘ └───┬──┬─┘ └──┬───┘ └───┬─────┘                      │
+│        │          │  │       │         │                             │
+│  ┌─────▼──┐ ┌─────▼──▼──┐ ┌─▼──────┐ ┌▼──────────┐                 │
+│  │  llm   │ │  混合检索   │ │ Ollama │ │  SQLite   │                 │
+│  │DeepSeek│ │Vector+BM25 │ │ bge-m3 │ │ WAL mode  │                 │
+│  │ /Ollama│ │  +RRF融合   │ │        │ │thread-safe│                 │
+│  └────────┘ └────────────┘ └────────┘ └───────────┘                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Retrieval Pipeline
+
+```
+User question
+     │
+     ▼
+┌─────────────┐
+│ correct_query │  "机器试觉" → "机器视觉"
+└──────┬──────┘
+       ▼
+┌─────────────┐
+│ expand_query │  "plc" → "PLC 可编程逻辑控制器 自动化控制"
+└──────┬──────┘
+       ▼
+┌─────────────┐
+│rewrite_query │  LLM rewrites for better embedding match  [optional]
+└──────┬──────┘
+       ▼
+┌─────────────────────────────────────────┐
+│           Multi-path Retrieval           │
+│  ┌──────────────┐  ┌──────────────────┐  │
+│  │ Vector Search │  │   BM25 Search     │  │
+│  │  cosine(emb)  │  │ bigram tokenizer  │  │
+│  └──────┬───────┘  └────────┬─────────┘  │
+│         │                   │             │
+│         └───────┬───────────┘             │
+│                 ▼                         │
+│         ┌─────────────┐                   │
+│         │  RRF Fusion  │  k=60            │
+│         │ + feedback   │                  │
+│         │   boosting   │                   │
+│         └──────┬──────┘                   │
+└────────────────┼──────────────────────────┘
+                 ▼
+┌─────────────────┐
+│   LLM Rerank    │  Top candidates ranked by LLM
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  build_prompt()  │  Context → System Prompt
+└────────┬────────┘
+         ▼
+┌─────────────────────────────┐
+│      LLM Generation          │
+│  ┌────────────────────────┐ │
+│  │  thinking (R1 reasoner) │ │  reasoning_content → think-dots UI
+│  │  ────────────────────── │ │
+│  │  answer tokens          │ │  streaming-cursor animation
+│  └────────────────────────┘ │
+│  quality fallback: retry if │
+│  answer < 15 chars or says │
+│  "无法回答" but keywords    │
+│  exist in retrieved chunks  │
+└─────────────────────────────┘
+```
+
+### Frontend Component Tree
+
+```
+<main.jsx>
+  <ThemeProvider>   ← localStorage "wenqu_theme"
+    <ToastProvider>  ← ephemeral queue
+      <ConversationProvider>  ← useReducer (12 actions)
+        <App>
+          ├── <ToastContainer />          fixed top-right
+          ├── <Sidebar>
+          │     ├── <SidebarHeader />      "问渠" + search/collapse btn
+          │     ├── <SearchPanel />        对话过滤
+          │     ├── <ConversationList>     时间分组 (今天/昨天/7天/更早)
+          │     │     └── <ConversationItem />   select/rename/delete
+          │     └── <SettingsPanel>
+          │           ├── <ThemeToggle />   ☀/☽
+          │           ├── <FontSizeControl />  12-20px
+          │           ├── <ExportButton />  .md download
+          │           └── <DocSection>
+          │                 ├── <DocItem />  icon + open chunks
+          │                 └── <ImportButton />
+          ├── <ChatArea>
+          │     ├── <MessageList>    scroll + scroll-to-bottom btn
+          │     │     ├── <EmptyChat />     3 quick-start buttons
+          │     │     └── <MessageItem>
+          │     │           ├── <MessageContent />   Markdown rendering
+          │     │           ├── <MessageSources />   citation tags
+          │     │           └── <MessageActions />   copy/regenerate/feedback/delete
+          │     └── <ChatInput>
+          │           ├── <SearchHistoryDropdown />
+          │           └── textarea + send/stop button
+          ├── <DocModal />       view document content
+          └── <ChunkModal>       edit/split/merge/delete chunks
+              ├── <ChunkToolbar />
+              └── <ChunkItem /> ×N
+```
+
+### API Design
+
+```
+GET  /api/health              Health check
+GET  /api/health/full         Full diagnostics (port/ollama/data)
+POST /api/ask                 Sync Q&A
+POST /api/ask/stream          SSE streaming Q&A  ← main flow
+POST /v1/chat/completions     OpenAI-compatible (stream/non-stream)
+POST /v1/embeddings           OpenAI-compatible embeddings
+GET  /v1/models               Model list
+
+GET    /api/docs               List documents (paginated)
+GET    /api/docs/content       View document content
+DELETE /api/docs               Delete document + chunks
+POST   /api/import             Import docs/ directory
+POST   /api/upload             Drag-drop file upload (multipart)
+
+GET    /api/chunks             List chunks (paginated)
+PUT    /api/chunks             Edit chunk text (re-embeds)
+DELETE /api/chunks             Delete chunk(s)
+POST   /api/chunks/split       Split chunk by separator
+POST   /api/chunks/merge       Merge multiple chunks
+
+POST   /api/feedback           Record helpful/unhelpful
+```
+
+### SSE Stream Events
+
+```
+Client POST /api/ask/stream {"question":"...", "history":[...]}
+                        │
+Server:                 ▼
+  data: {"sources": ["doc1.pdf", "doc2.pdf"]}      ← source list
+  data: {"thinking": "原始问题：...\n检索范围：..."} ← retrieval trace
+  data: {"think": "嗯，用户只说了..."}              ← R1 reasoning token (streaming)
+  data: {"token": "根"}                             ← answer token (streaming)
+  data: {"token": "据"}                             ← ...
+  data: {"token": "..."}                            ← ...
+  data: {"sources": ["doc1.pdf"]}                   ← final sources
+```
+
 ## Configuration
 
 Set via environment variables or `.env` file:
