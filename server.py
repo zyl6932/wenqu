@@ -268,13 +268,20 @@ class APIHandler(SimpleHTTPRequestHandler):
 
         try:
             for event_type, payload in ask_stream(question, history=history):
-                line = json.dumps({event_type: payload}, ensure_ascii=False)
-                self.wfile.write(f"data: {line}\n\n".encode("utf-8"))
-                self.wfile.flush()
+                try:
+                    line = json.dumps({event_type: payload}, ensure_ascii=False)
+                    self.wfile.write(f"data: {line}\n\n".encode("utf-8"))
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    # 客户端已断开（刷新/关闭页面），停止生成，释放 LLM 资源
+                    return
         except Exception as e:
-            err = json.dumps({"error": str(e)}, ensure_ascii=False)
-            self.wfile.write(f"data: {err}\n\n".encode("utf-8"))
-            self.wfile.flush()
+            try:
+                err = json.dumps({"error": str(e)}, ensure_ascii=False)
+                self.wfile.write(f"data: {err}\n\n".encode("utf-8"))
+                self.wfile.flush()
+            except Exception:
+                pass
 
     # ── 导入 ─────────────────────────────────────────────
 
@@ -472,21 +479,21 @@ class APIHandler(SimpleHTTPRequestHandler):
                 from core.llm import chat_stream
                 for kind, text in chat_stream(llm_messages):
                     if kind == "think":
-                        self._sse_chunk({
+                        if not self._sse_chunk({
                             "id": request_id,
                             "object": "chat.completion.chunk",
                             "created": int(_time.time()),
                             "model": "wenqu-v1",
                             "choices": [{"index": 0, "delta": {"reasoning_content": text}, "finish_reason": None}],
-                        })
+                        }): return
                     else:
-                        self._sse_chunk({
+                        if not self._sse_chunk({
                             "id": request_id,
                             "object": "chat.completion.chunk",
                             "created": int(_time.time()),
                             "model": "wenqu-v1",
                             "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}],
-                        })
+                        }): return
                 self._sse_chunk({
                     "id": request_id,
                     "object": "chat.completion.chunk",
@@ -495,14 +502,7 @@ class APIHandler(SimpleHTTPRequestHandler):
                     "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
                 })
                 self._sse_done()
-            except Exception as e:
-                self._sse_chunk({
-                    "id": request_id,
-                    "object": "chat.completion.chunk",
-                    "created": int(_time.time()),
-                    "model": "wenqu-v1",
-                    "choices": [{"index": 0, "delta": {"content": f"[错误: {e}]"}, "finish_reason": "stop"}],
-                })
+            except Exception:
                 self._sse_done()
             return
 
@@ -535,12 +535,19 @@ class APIHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def _sse_chunk(self, data: dict):
-        self.wfile.write(f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode("utf-8"))
-        self.wfile.flush()
+        try:
+            self.wfile.write(f"data: {json.dumps(data, ensure_ascii=False)}\n\n".encode("utf-8"))
+            self.wfile.flush()
+            return True
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            return False
 
     def _sse_done(self):
-        self.wfile.write(b"data: [DONE]\n\n")
-        self.wfile.flush()
+        try:
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
 
     def _handle_v1_embeddings(self):
         """OpenAI /v1/embeddings 兼容接口"""

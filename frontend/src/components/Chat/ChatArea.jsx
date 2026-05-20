@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useConversation } from '../../context/ConversationContext';
 import { useToast } from '../../context/ToastContext';
 import { askStream } from '../../api/client';
@@ -57,6 +57,13 @@ export default function ChatArea() {
   const handleStop = useCallback(() => {
     if (stopRef.current) stopRef.current();
     setIsStreaming(false);
+  }, []);
+
+  // 页面卸载时主动断开流式连接，避免服务端浪费 LLM 调用
+  useEffect(() => {
+    const handler = () => { if (stopRef.current) stopRef.current(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
   }, []);
 
   return (
