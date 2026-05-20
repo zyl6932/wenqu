@@ -44,17 +44,19 @@ export default function DocSection({ onOpenChunks }) {
         <span style={{ transform: collapsed ? 'rotate(-90deg)' : '', transition: 'transform .2s', fontSize: 10 }}>▼</span>
       </div>
       {!collapsed && (
-        <div className="doc-list-wrap">
-          {docs.length === 0
-            ? <div className="empty-docs">暂无文档</div>
-            : docs.map(d => (
-                <DocItemView key={d.path} doc={d} onOpen={() => onOpenChunks(d.path)} onDelete={handleDelete} />
-              ))
-          }
-          <button className="btn-import" onClick={handleImport} disabled={importing} style={{ display: 'block', marginTop: 4 }}>
+        <>
+          <div className="doc-list-wrap">
+            {docs.length === 0
+              ? <div className="empty-docs">暂无文档</div>
+              : docs.map(d => (
+                  <DocItemView key={d.path} doc={d} onOpen={() => onOpenChunks(d.path)} onDelete={handleDelete} />
+                ))
+            }
+          </div>
+          <button className="btn-import" onClick={handleImport} disabled={importing}>
             {importing ? '导入中...' : '+ 导入文档'}
           </button>
-        </div>
+        </>
       )}
     </div>
   );
