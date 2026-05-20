@@ -155,7 +155,10 @@ def import_docs():
     STORAGE_CFG.docs_dir.mkdir(parents=True, exist_ok=True)
     files = []
     for ext in ("*.txt", "*.md", "*.docx", "*.pptx", "*.pdf", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"):
-        files.extend(STORAGE_CFG.docs_dir.glob(ext))
+        files.extend(STORAGE_CFG.docs_dir.rglob(ext))
+
+    # 过滤 Office 临时文件
+    files = [f for f in files if not f.name.startswith("~$")]
 
     if not files:
         print(f">>> 请在 {STORAGE_CFG.docs_dir} 目录放入文档，然后重新运行")

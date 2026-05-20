@@ -25,16 +25,18 @@ venv/
 .DS_Store
 Thumbs.db
 
-# 文档二进制（docs 目录只提交文本文件）
-docs/*.pdf
-docs/*.docx
-docs/*.pptx
-docs/*.png
-docs/*.jpg
-docs/*.jpeg
-docs/*.gif
-docs/*.bmp
-docs/*.webp
+# 文档目录 — 只提交文本文件，忽略所有二进制和临时文件
+docs/**/*.pdf
+docs/**/*.docx
+docs/**/*.pptx
+docs/**/*.png
+docs/**/*.jpg
+docs/**/*.jpeg
+docs/**/*.gif
+docs/**/*.bmp
+docs/**/*.webp
+docs/**/~$*
+docs/**/*.doc
 
 # 前端构建
 frontend/node_modules/
@@ -43,3 +45,4 @@ static/dist/
 # 临时文件
 *.tmp
 *.temp
+~$*
