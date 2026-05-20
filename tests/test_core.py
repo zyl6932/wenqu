@@ -283,6 +283,90 @@ class APITest(unittest.TestCase):
 
 
 # ── 索引 & 分词测试 ──────────────────────────────────
+# ── 运行时配置测试 ──────────────────────────────────
+class APIConfigTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = "http://localhost:8080"
+        cls.server_up = _server_up()
+
+    def _skip_if_down(self):
+        if not self.server_up:
+            self.skipTest("服务器未运行")
+
+    def test_get_config(self):
+        self._skip_if_down()
+        import urllib.request, json
+        resp = urllib.request.urlopen(f"{self.base}/api/config", timeout=5)
+        data = json.loads(resp.read())
+        self.assertIn('min_similarity', data)
+        self.assertIn('top_k', data)
+        self.assertIsInstance(data['top_k'], int)
+        self.assertGreater(data['top_k'], 0)
+
+    def test_update_top_k(self):
+        self._skip_if_down()
+        import urllib.request, json
+        # 先保存旧值
+        resp = urllib.request.urlopen(f"{self.base}/api/config", timeout=5)
+        old = json.loads(resp.read())
+        old_k = old['top_k']
+        # 改值
+        body = json.dumps({"top_k": 15}).encode()
+        req = urllib.request.Request(f"{self.base}/api/config", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        resp = urllib.request.urlopen(req, timeout=5)
+        data = json.loads(resp.read())
+        self.assertEqual(data['config']['top_k'], 15)
+        # 恢复
+        body = json.dumps({"top_k": old_k}).encode()
+        req = urllib.request.Request(f"{self.base}/api/config", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        urllib.request.urlopen(req, timeout=5)
+
+    def test_update_threshold(self):
+        self._skip_if_down()
+        import urllib.request, json
+        resp = urllib.request.urlopen(f"{self.base}/api/config", timeout=5)
+        old = json.loads(resp.read())
+        old_v = old['min_similarity']
+        # 改值
+        body = json.dumps({"min_similarity": 0.5}).encode()
+        req = urllib.request.Request(f"{self.base}/api/config", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        resp = urllib.request.urlopen(req, timeout=5)
+        data = json.loads(resp.read())
+        self.assertEqual(data['config']['min_similarity'], 0.5)
+        # 恢复
+        body = json.dumps({"min_similarity": old_v}).encode()
+        req = urllib.request.Request(f"{self.base}/api/config", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        urllib.request.urlopen(req, timeout=5)
+
+    def test_config_affects_retrieval(self):
+        self._skip_if_down()
+        import urllib.request, json
+        # 改 top_k 为 3
+        body = json.dumps({"top_k": 3}).encode()
+        req = urllib.request.Request(f"{self.base}/api/config", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        resp = urllib.request.urlopen(req, timeout=5)
+        data = json.loads(resp.read())
+        self.assertEqual(data['config']['top_k'], 3)
+        # 发一个检索请求看是否成功
+        body2 = json.dumps({"question": "测试"}).encode()
+        req2 = urllib.request.Request(f"{self.base}/api/ask", data=body2, method='POST')
+        req2.add_header("Content-Type", "application/json")
+        resp2 = urllib.request.urlopen(req2, timeout=30)
+        ans = json.loads(resp2.read())
+        self.assertIn('answer', ans)
+        # 恢复默认
+        body = json.dumps({"top_k": 10}).encode()
+        req = urllib.request.Request(f"{self.base}/api/config", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        urllib.request.urlopen(req, timeout=5)
+
+
 class BM25Test(unittest.TestCase):
     def test_bm25_build(self):
         from core.storage import count_chunks
@@ -330,7 +414,7 @@ if __name__ == '__main__':
     else:
         suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
         filtered = unittest.TestSuite()
-        for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest]:
+        for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest, APIConfigTest]:
             filtered.addTests(unittest.TestLoader().loadTestsFromTestCase(test_class))
         runner = unittest.TextTestRunner(verbosity=2)
         result = runner.run(filtered)

@@ -302,6 +302,9 @@ Set via environment variables or `.env` file:
 | `PORT` | `8080` | Listen port |
 | `CHUNK_MAX_TOKENS` | `400` | Max tokens per chunk |
 | `TOP_K` | `10` | Number of retrieval results |
+| `MIN_SIMILARITY` | `0.25` | Minimum cosine similarity threshold |
+
+> **Runtime adjustment**: `TOP_K`, `MIN_SIMILARITY`, and `ENABLE_QUERY_REWRITE` can be changed at runtime via the Settings panel in the Web UI. Changes take effect immediately without restarting the server.
 
 ## License
 
