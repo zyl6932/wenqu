@@ -147,14 +147,15 @@ body {
 
 /* chat header */
 .chat-header {
-  padding: 12px 20px 10px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; justify-content: center;
 }
 .chat-header-title {
-  font-family: var(--serif); font-size: 14px;
+  font-family: var(--serif); font-size: 15px; font-weight: 600;
   color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-align: center;
 }
 
 /* main area */
