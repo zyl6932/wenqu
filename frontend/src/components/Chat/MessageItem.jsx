@@ -12,7 +12,7 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, 
       <div className="message user">
         <MessageContent role="user" content={msg.content} />
         {ts && <div className="msg-time user">{ts}</div>}
-        <div className="msg-actions" style={{ textAlign: 'right', marginTop: 2 }}>
+        <div className="msg-actions" style={{ justifyContent: 'flex-end', marginTop: 2 }}>
           <button onClick={onDelete} style={{ fontSize: 11, color: 'var(--ink-mute)', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--serif)' }}>删除</button>
         </div>
       </div>
