@@ -45,13 +45,14 @@ def _ollama_stream(url: str, data: dict):
             yield line
 
 
-def chat(messages: list[dict], temperature: float | None = None) -> str:
+def chat(messages: list[dict], temperature: float | None = None, provider: str | None = None) -> str:
     with _llm_semaphore:
-        return _chat(messages, temperature)
+        return _chat(messages, temperature, provider)
 
 
-def _chat(messages: list[dict], temperature: float | None = None) -> str:
-    if LLM_CFG.provider == "ollama":
+def _chat(messages: list[dict], temperature: float | None = None, provider: str | None = None) -> str:
+    provider = provider or LLM_CFG.provider
+    if provider == "ollama":
         result = _ollama_post(
             f"{LLM_CFG.ollama_url}/api/chat",
             {
@@ -80,17 +81,18 @@ def _chat(messages: list[dict], temperature: float | None = None) -> str:
     return msg.get("content") or msg.get("reasoning_content") or ""
 
 
-def chat_stream(messages: list[dict]):
+def chat_stream(messages: list[dict], provider: str | None = None):
     """流式调用 LLM。yield ("token", text) 或 ("think", text)。"""
     _llm_semaphore.acquire()
     try:
-        yield from _chat_stream(messages)
+        yield from _chat_stream(messages, provider)
     finally:
         _llm_semaphore.release()
 
 
-def _chat_stream(messages: list[dict]):
-    if LLM_CFG.provider == "ollama":
+def _chat_stream(messages: list[dict], provider: str | None = None):
+    provider = provider or LLM_CFG.provider
+    if provider == "ollama":
         for line in _ollama_stream(
             f"{LLM_CFG.ollama_url}/api/chat",
             {

@@ -108,14 +108,7 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     prompt = build_prompt(contexts, question)
     system_msg = {"role": "system", "content": "你是一个严谨的知识库助手，仅根据提供的参考内容回答问题。如果参考内容中找不到答案，请直接说\"根据已有资料，我无法回答这个问题\"，不要编造。请用中文回答，简洁明了。"}
 
-    # 如果指定了 llm_provider，临时切换（支持前端运行时切换 本地/联网）
-    previous_provider = None
-    if llm_provider:
-        previous_provider = LLM_CFG.provider
-        LLM_CFG.provider = llm_provider
-
-    try:
-        messages = [system_msg]
+    messages = [system_msg]
         if history:
             messages.extend(history)
         messages.append({"role": "user", "content": prompt})
