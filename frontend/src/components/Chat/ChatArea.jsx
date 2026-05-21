@@ -12,7 +12,6 @@ export default function ChatArea() {
   const [elapsed, setElapsed] = useState(null);
   const [fillValue, setFillValue] = useState({ text: null, key: 0 });
   const [atBottom, setAtBottom] = useState(true);
-  const [useLocal, setUseLocal] = useState(false);
   const stopRef = useRef(null);
   const msgListRef = useRef(null);
 
@@ -51,10 +50,10 @@ export default function ChatArea() {
         dispatch({ type: 'FINISH_AI_MSG', elapsed: null });
         addToast(err, 'error');
       },
-      useLocal ? 'ollama' : null
+      localStorage.getItem('wenqu_use_local') === 'true' ? 'ollama' : null
     );
     stopRef.current = stop;
-  }, [state.conversations, dispatch, addSearchHistory, getActiveConv, addToast, useLocal]);
+  }, [state.conversations, dispatch, addSearchHistory, getActiveConv, addToast]);
 
   const handleStop = useCallback(() => {
     if (stopRef.current) stopRef.current();
@@ -73,19 +72,6 @@ export default function ChatArea() {
     <div className="main">
       <div className="chat-header">
         <span className="chat-header-title">{conv?.title || '问渠'}</span>
-        <button
-          onClick={() => setUseLocal(v => !v)}
-          style={{
-            marginLeft: 'auto', padding: '3px 10px',
-            border: '1px solid var(--border)', borderRadius: 12,
-            background: useLocal ? 'var(--primary-light)' : 'transparent',
-            color: useLocal ? 'var(--vermilion)' : 'var(--ink-mute)',
-            fontSize: 11, cursor: 'pointer', fontFamily: 'var(--sans)',
-            whiteSpace: 'nowrap', transition: 'all .15s',
-          }}
-        >
-          {useLocal ? '本地' : '联网'}
-        </button>
       </div>
       <MessageList
         ref={msgListRef}

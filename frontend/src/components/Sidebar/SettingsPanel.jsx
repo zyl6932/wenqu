@@ -39,6 +39,22 @@ export default function SettingsPanel({ visible, onOpenChunks }) {
           <ThemeToggle />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontFamily: 'var(--serif)' }}>LLM 模型</span>
+          <button
+            className="sidebar-btn"
+            onClick={() => {
+              const cur = localStorage.getItem('wenqu_use_local') === 'true';
+              localStorage.setItem('wenqu_use_local', !cur);
+              // 强制刷新 sidebar 更新按钮文字
+              window.dispatchEvent(new Event('storage'));
+              setCfg(cfg => cfg ? { ...cfg } : cfg);
+            }}
+            style={{ width: 'auto', padding: '4px 10px', fontSize: 12 }}
+          >
+            {localStorage.getItem('wenqu_use_local') === 'true' ? '本地' : '联网'}
+          </button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontFamily: 'var(--serif)' }}>字号</span>
           <FontSizeControl />
         </div>
