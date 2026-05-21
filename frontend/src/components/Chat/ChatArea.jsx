@@ -70,7 +70,7 @@ export default function ChatArea() {
 
   return (
     <div className="main">
-      <div className="chat-header">
+      <div className="chat-header" style={{ paddingLeft: 52 }}>
         <span className="chat-header-title">{conv?.title || '问渠'}</span>
       </div>
       <MessageList
