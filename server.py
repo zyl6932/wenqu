@@ -256,6 +256,7 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._json({"error": "问题不能为空"}, 400)
             return
 
+        llm_provider = data.get("llm_provider", None)
         history = data.get("history", None)
         # 验证 history 格式
         if history is not None and (not isinstance(history, list) or not all(
@@ -271,7 +272,7 @@ class APIHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
         try:
-            for event_type, payload in ask_stream(question, history=history):
+            for event_type, payload in ask_stream(question, history=history, llm_provider=llm_provider):
                 try:
                     line = json.dumps({event_type: payload}, ensure_ascii=False)
                     self.wfile.write(f"data: {line}\n\n".encode("utf-8"))

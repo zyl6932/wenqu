@@ -12,6 +12,7 @@ export default function ChatArea() {
   const [elapsed, setElapsed] = useState(null);
   const [fillValue, setFillValue] = useState({ text: null, key: 0 });
   const [atBottom, setAtBottom] = useState(true);
+  const [useLocal, setUseLocal] = useState(false);
   const stopRef = useRef(null);
   const msgListRef = useRef(null);
 
@@ -49,17 +50,17 @@ export default function ChatArea() {
         dispatch({ type: 'APPEND_TOKEN', token: `\n[${err}]` });
         dispatch({ type: 'FINISH_AI_MSG', elapsed: null });
         addToast(err, 'error');
-      }
+      },
+      useLocal ? 'ollama' : null
     );
     stopRef.current = stop;
-  }, [state.conversations, dispatch, addSearchHistory, getActiveConv, addToast]);
+  }, [state.conversations, dispatch, addSearchHistory, getActiveConv, addToast, useLocal]);
 
   const handleStop = useCallback(() => {
     if (stopRef.current) stopRef.current();
     setIsStreaming(false);
   }, []);
 
-  // 页面卸载时主动断开流式连接，避免服务端浪费 LLM 调用
   useEffect(() => {
     const handler = () => { if (stopRef.current) stopRef.current(); };
     window.addEventListener('beforeunload', handler);
@@ -72,6 +73,19 @@ export default function ChatArea() {
     <div className="main">
       <div className="chat-header">
         <span className="chat-header-title">{conv?.title || '问渠'}</span>
+        <button
+          onClick={() => setUseLocal(v => !v)}
+          style={{
+            marginLeft: 'auto', padding: '3px 10px',
+            border: '1px solid var(--border)', borderRadius: 12,
+            background: useLocal ? 'var(--primary-light)' : 'transparent',
+            color: useLocal ? 'var(--vermilion)' : 'var(--ink-mute)',
+            fontSize: 11, cursor: 'pointer', fontFamily: 'var(--sans)',
+            whiteSpace: 'nowrap', transition: 'all .15s',
+          }}
+        >
+          {useLocal ? '本地' : '联网'}
+        </button>
       </div>
       <MessageList
         ref={msgListRef}

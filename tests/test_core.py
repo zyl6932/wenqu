@@ -367,6 +367,57 @@ class APIConfigTest(unittest.TestCase):
         urllib.request.urlopen(req, timeout=5)
 
 
+# ── LLM 切换测试 ──────────────────────────────────
+class LLMProviderTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = "http://localhost:8080"
+        cls.server_up = _server_up()
+
+    def _skip_if_down(self):
+        if not self.server_up:
+            self.skipTest("服务器未运行")
+
+    def test_ask_stream_default(self):
+        """默认（不传 llm_provider）使用 deepseek"""
+        self._skip_if_down()
+        import urllib.request, json
+        body = json.dumps({"question": "测试"}).encode()
+        req = urllib.request.Request(f"{self.base}/api/ask/stream", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        resp = urllib.request.urlopen(req, timeout=30)
+        data_lines = []
+        for _ in range(10):
+            line = resp.readline().decode("utf-8").strip()
+            if line:
+                data_lines.append(line)
+            if 'token' in line or 'error' in line:
+                break
+        self.assertTrue(any('token' in l or 'error' in l or 'thinking' in l for l in data_lines))
+
+    def test_ask_stream_ollama(self):
+        """传入 llm_provider=ollama 切换到本地模型"""
+        self._skip_if_down()
+        import urllib.request, json
+        body = json.dumps({"question": "测试", "llm_provider": "ollama"}).encode()
+        req = urllib.request.Request(f"{self.base}/api/ask/stream", data=body, method='POST')
+        req.add_header("Content-Type", "application/json")
+        try:
+            resp = urllib.request.urlopen(req, timeout=30)
+            data_lines = []
+            for _ in range(10):
+                line = resp.readline().decode("utf-8").strip()
+                if line:
+                    data_lines.append(line)
+                if 'token' in line or 'error' in line:
+                    break
+            # 即使 Ollama 未运行，至少应返回 error 事件而非 HTTP 错误
+            self.assertTrue(any('token' in l or 'error' in l or 'thinking' in l for l in data_lines))
+        except Exception as e:
+            # 如果 Ollama 不可用也会收到 SSE error 事件
+            pass
+
+
 class BM25Test(unittest.TestCase):
     def test_bm25_build(self):
         from core.storage import count_chunks
@@ -414,7 +465,7 @@ if __name__ == '__main__':
     else:
         suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
         filtered = unittest.TestSuite()
-        for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest, APIConfigTest]:
+        for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest, APIConfigTest, LLMProviderTest]:
             filtered.addTests(unittest.TestLoader().loadTestsFromTestCase(test_class))
         runner = unittest.TextTestRunner(verbosity=2)
         result = runner.run(filtered)

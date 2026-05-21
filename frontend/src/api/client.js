@@ -22,7 +22,7 @@ async function request(method, path, body, opts = {}) {
   }
 }
 
-export function askStream(question, history, signal, onToken, onThink, onSources, onThinking, onDone, onError) {
+export function askStream(question, history, signal, onToken, onThink, onSources, onThinking, onDone, onError, llmProvider) {
   const controller = new AbortController();
   const linkedSignal = signal || controller.signal;
   const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -33,7 +33,7 @@ export function askStream(question, history, signal, onToken, onThink, onSources
       const res = await fetch(`${BASE}/api/ask/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, history }),
+        body: JSON.stringify({ question, history, ...(llmProvider ? { llm_provider: llmProvider } : {}) }),
         signal: linkedSignal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

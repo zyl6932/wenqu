@@ -4,7 +4,7 @@ RAG 编排层 — 串联检索 + 生成 + 对话
 import re
 from pathlib import Path
 
-from .config import STORAGE_CFG, RETRIEVAL_CFG
+from .config import LLM_CFG, STORAGE_CFG, RETRIEVAL_CFG
 from .llm import chat, chat_stream
 from .chunker import estimate_tokens, clean_text, split_text, split_with_structure, build_overview, extract_keywords
 from .embed import embed_single, clear_cache
@@ -67,7 +67,11 @@ def expand_with_history(question: str, history: list[dict] | None) -> str:
 
 
 # ── 流式问答 ───────────────────────────────────────
-def ask_stream(question: str, top_k: int | None = None, history: list[dict] | None = None):
+def ask_stream(question: str, top_k: int | None = None, history: list[dict] | None = None, llm_provider: str | None = None):
+    think_steps = []
+    source_names = []
+    prompt = question
+
     enriched_q = expand_with_history(question, history)
     dynamic_k = _smart_top_k(question)
     tk = max(top_k or RETRIEVAL_CFG.top_k, dynamic_k)
@@ -87,7 +91,6 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     yield ("sources", source_names)
 
     # 准备思考步骤（不立即发送，穿插在 token 流中）
-    think_steps = []
     think_steps.append(f"问题：{trace.get('original', question)}")
     if trace.get("corrected"):
         think_steps.append(f"纠错：{trace['corrected']}")
@@ -103,31 +106,39 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     think_steps.append(f"RRF 融合 → 返回 {len(contexts)} 个片段")
 
     prompt = build_prompt(contexts, question)
-
     system_msg = {"role": "system", "content": "你是一个严谨的知识库助手，仅根据提供的参考内容回答问题。如果参考内容中找不到答案，请直接说\"根据已有资料，我无法回答这个问题\"，不要编造。请用中文回答，简洁明了。"}
 
-    messages = [system_msg]
-    if history:
-        messages.extend(history)
-    messages.append({"role": "user", "content": prompt})
+    # 如果指定了 llm_provider，临时切换（支持前端运行时切换 本地/联网）
+    previous_provider = None
+    if llm_provider:
+        previous_provider = LLM_CFG.provider
+        LLM_CFG.provider = llm_provider
 
-    full_answer = ""
-    think_idx = 0
-    think_step_interval = 6  # 每 6 个 token 发一条思考步骤
-    token_count = 0
-    for kind, text in chat_stream(messages):
-        if kind == "think":
-            full_answer += text
-            yield ("think", text)
-        else:
-            full_answer += text
-            yield ("token", text)
-            token_count += 1
-            # 穿插思考步骤到 token 流中
-            if think_idx < len(think_steps) and token_count >= think_step_interval:
-                yield ("thinking", think_steps[think_idx])
-                think_idx += 1
-                token_count = 0
+    try:
+        messages = [system_msg]
+        if history:
+            messages.extend(history)
+        messages.append({"role": "user", "content": prompt})
+
+        full_answer = ""
+        think_idx = 0
+        think_step_interval = 6
+        token_count = 0
+        for kind, text in chat_stream(messages):
+            if kind == "think":
+                full_answer += text
+                yield ("think", text)
+            else:
+                full_answer += text
+                yield ("token", text)
+                token_count += 1
+                if think_idx < len(think_steps) and token_count >= think_step_interval:
+                    yield ("thinking", think_steps[think_idx])
+                    think_idx += 1
+                    token_count = 0
+    finally:
+        if llm_provider and previous_provider is not None:
+            LLM_CFG.provider = previous_provider
 
     # 发出剩余的思考步骤
     while think_idx < len(think_steps):
@@ -158,8 +169,8 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
             else:
                 yield ("token", text)
 
-    source_names = [Path(s).name for s in source_paths]
-    yield ("sources", source_names)
+    if source_names:
+        yield ("sources", source_names)
 
 
 # ── 导入文档 ───────────────────────────────────────
