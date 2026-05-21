@@ -5,7 +5,7 @@ import { askStream } from '../../api/client';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 
-export default function ChatArea() {
+export default function ChatArea({ sidebarCollapsed }) {
   const { state, dispatch, addSearchHistory, getActiveConv } = useConversation();
   const { addToast } = useToast();
   const [isStreaming, setIsStreaming] = useState(false);
@@ -70,7 +70,7 @@ export default function ChatArea() {
 
   return (
     <div className="main">
-      <div className="chat-header" style={{ paddingLeft: 52 }}>
+      <div className="chat-header" style={{ paddingLeft: sidebarCollapsed ? 52 : 16 }}>
         <span className="chat-header-title">{conv?.title || '问渠'}</span>
       </div>
       <MessageList

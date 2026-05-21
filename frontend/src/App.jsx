@@ -81,7 +81,7 @@ export default function App() {
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
-      <ChatArea />
+      <ChatArea sidebarCollapsed={sidebarCollapsed} />
       {docPath && <DocModal path={docPath} onClose={() => setDocPath(null)} />}
       {chunkSource && <ChunkModal source={chunkSource} onClose={() => setChunkSource(null)} />}
     </>
