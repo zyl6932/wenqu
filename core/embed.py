@@ -1,6 +1,7 @@
 """
 向量嵌入层 — Ollama / 未来可切换为 OpenAI / 本地模型
 """
+import hashlib
 import json
 import threading
 import urllib.request
@@ -19,7 +20,7 @@ def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
 
     with _cache_lock:
         for i, t in enumerate(texts):
-            key = t[:200]
+            key = hashlib.sha256(t.encode()).hexdigest()
             if key in _embed_cache:
                 results[i] = _embed_cache[key]
             else:
@@ -39,7 +40,8 @@ def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
         with _cache_lock:
             for idx, emb in zip(uncached_idx, new_embs):
                 results[idx] = emb
-                _embed_cache[uncached_texts[uncached_idx.index(idx)][:200]] = emb
+                ut = uncached_texts[uncached_idx.index(idx)]
+                _embed_cache[hashlib.sha256(ut.encode()).hexdigest()] = emb
 
     return results  # type: ignore
 

@@ -167,7 +167,7 @@ body {
 .hdr-btn:hover { background:var(--primary-light); border-color:var(--vermilion); color:var(--vermilion); }
 
 .chat-messages {
-  flex:1; overflow-y:auto; padding:24px 60px 60px; display:flex; flex-direction:column; gap:12px;
+  flex:1; overflow-y:auto; padding:24px 100px 60px; display:flex; flex-direction:column; gap:12px;
   scroll-behavior:smooth;
 }
 .message { max-width:80%; animation:fadeUp .3s ease; }
@@ -301,7 +301,7 @@ pre:hover .code-copy-btn { opacity:1; }
 }
 
 /* input */
-.chat-input-area { padding:12px 60px; background:transparent; position:relative; }
+.chat-input-area { padding:12px 100px; background:transparent; position:relative; }
 .chat-input-area::before {
   content:''; position:absolute; top:-20px; left:0; right:0; height:20px;
   background:linear-gradient(transparent,var(--bg)); pointer-events:none;

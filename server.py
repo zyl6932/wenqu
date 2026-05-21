@@ -293,20 +293,10 @@ class APIHandler(SimpleHTTPRequestHandler):
     # ── 导入 ─────────────────────────────────────────────
 
     def _handle_import(self):
-        from io import StringIO
-        import sys as _sys
-
-        old_stdout = _sys.stdout
-        buf = StringIO()
-        _sys.stdout = buf
-
-        try:
-            import_docs()
-            output = buf.getvalue()
-        finally:
-            _sys.stdout = old_stdout
-
-        self._json({"message": output.strip() or "导入完成"})
+        log_lines = []
+        import_docs(on_log=log_lines.append)
+        self._json({"message": "
+".join(log_lines) or "导入完成"})
 
     # ── 文档管理 ─────────────────────────────────────────
 

@@ -69,12 +69,18 @@ def count_sources() -> int:
     return get_db().execute("SELECT COUNT(*) FROM sources").fetchone()[0]
 
 
-def load_all_chunks(source: str | None = None) -> list[tuple[int, str, str, str]]:
-    """返回 [(id, source, text, emb_json_str)]"""
+def load_all_chunks(source: str | None = None, limit: int | None = None, offset: int = 0) -> list[tuple[int, str, str, str]]:
+    """返回 [(id, source, text, emb_json_str)]。limit=None 表示全部。"""
     db = get_db()
     if source:
-        return db.execute("SELECT id, source, text, embedding FROM chunks WHERE source = ? ORDER BY id", (source,)).fetchall()
-    return db.execute("SELECT id, source, text, embedding FROM chunks ORDER BY id").fetchall()
+        return db.execute(
+            "SELECT id, source, text, embedding FROM chunks WHERE source = ? ORDER BY id LIMIT ? OFFSET ?",
+            (source, limit or -1, offset),
+        ).fetchall()
+    return db.execute(
+        "SELECT id, source, text, embedding FROM chunks ORDER BY id LIMIT ? OFFSET ?",
+        (limit or -1, offset),
+    ).fetchall()
 
 
 def load_chunks_for_sources(sources: list[str]) -> list[tuple[int, str, str, str]]:

@@ -238,12 +238,15 @@ def import_docs(on_log=None):
 
 
 # ── 块管理 ──────────────────────────────────────────
-def list_chunks(source: str | None = None) -> list[dict]:
-    rows = load_all_chunks(source)
-    return [
+def list_chunks(source: str | None = None, page: int = 1, page_size: int = 50) -> tuple[list[dict], int]:
+    offset = (page - 1) * page_size
+    rows = load_all_chunks(source, limit=page_size, offset=offset)
+    total = count_chunks(source)
+    chunks = [
         {"id": r[0], "source": r[1], "text": r[2], "tokens": estimate_tokens(r[2]), "keywords": extract_keywords(r[2])}
         for r in rows
     ]
+    return chunks, total
 
 
 def update_chunk(chunk_id: int, new_text: str):
