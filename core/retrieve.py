@@ -37,15 +37,16 @@ import json
 import re
 from collections import Counter
 from pathlib import Path
+import numpy as np
 
 from .config import RETRIEVAL_CFG
-from .embed import embed_single, cosine
+from .embed import embed_single
 from .llm import chat
 from .chunker import estimate_tokens, TOKEN_RE
 from .storage import (
-    load_all_chunks, load_chunks_for_sources, load_chunks_except,
-    overview_sources, get_feedback_boost,
+    load_all_chunks, overview_sources, get_feedback_boost,
 )
+from .vector_store import get_vector_store
 
 from collections import OrderedDict
 
@@ -521,30 +522,17 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
     steps["docs_matched"] = [Path(d).name for d in relevant_docs] if relevant_docs else []
 
     # ── 步骤 ⑤：向量语义检索 ──
-    # 将改写后的查询做向量嵌入，计算与所有 chunk 的 cosine 相似度
+    # numpy 内存矩阵批量 cosine（VectorStore），替代原 json.loads 逐条扫描
     q_emb = embed_single(rewritten_q)
-
-    # 两层搜索：primary = 匹配文档内的块（优先），other = 其他文档的块（补充）
-    primary_rows = load_chunks_for_sources(relevant_docs) if relevant_docs else load_all_chunks()
-    other_rows = load_chunks_except(relevant_docs) if relevant_docs else []
-    steps["total_chunks"] = len(primary_rows) + len(other_rows)
-
-    # 计算余弦相似度，按分数排序
-    sem_scored = []
-    for chunk_id, source, text, emb_blob in primary_rows + other_rows:
-        emb = json.loads(emb_blob)
-        score = cosine(q_emb, emb)
-        sem_scored.append((score, chunk_id, text, source))
-    sem_scored.sort(key=lambda x: x[0], reverse=True)
-    # 过滤低于阈值的，取 top_k * 2 给 RRF 融合留余量
-    sem_top = [item for item in sem_scored
-               if item[0] >= RETRIEVAL_CFG.min_similarity][:tk * 2]
+    vs = get_vector_store()
+    steps["total_chunks"] = vs.size
+    sem_top = vs.search(np.asarray(q_emb, dtype=np.float32),
+                        top_k=tk * 2, min_similarity=RETRIEVAL_CFG.min_similarity)
     steps["semantic_top"] = len(sem_top)
     steps["top_score"] = round(sem_top[0][0], 3) if sem_top else 0
 
     # ── 步骤 ⑥：BM25 全文检索 ──
     # 用扩展后的 query（保留原始词汇）做 BM25 搜索
-    _bm25.invalidate()
     bm25_top = _bm25.search(expanded_q, top_k=tk * 2)
     steps["bm25_top"] = len(bm25_top)
 
@@ -618,6 +606,8 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
 
 
 def clear_cache():
-    """清空检索缓存和 BM25 索引"""
+    """清空检索缓存、BM25 索引和向量存储"""
     _retrieval_cache.clear()
     _bm25.invalidate()
+    from .vector_store import rebuild_vector_store
+    rebuild_vector_store()

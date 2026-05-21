@@ -14,6 +14,8 @@ class VectorStore:
     def __init__(self):
         self._ids: np.ndarray | None = None          # (N,) int64
         self._embeddings: np.ndarray | None = None    # (N, D) float32, L2-normalized
+        self._texts: list[str] = []                   # 与 ids/embeddings 平行
+        self._sources: list[str] = []                 # 与 ids/embeddings 平行
         self._index_path = STORAGE_CFG.data_dir / "vectors.npy"
         self._ids_path = STORAGE_CFG.data_dir / "vector_ids.npy"
 
@@ -22,10 +24,14 @@ class VectorStore:
         if not rows:
             self._ids = None
             self._embeddings = None
+            self._texts = []
+            self._sources = []
             return
 
         ids = []
         embs = []
+        texts = []
+        sources = []
         for row in rows:
             chunk_id, source, text, emb_data = row
             emb = _deserialize(emb_data)
@@ -33,22 +39,28 @@ class VectorStore:
                 continue
             ids.append(chunk_id)
             embs.append(emb)
+            texts.append(text)
+            sources.append(source)
 
         if not embs:
             self._ids = None
             self._embeddings = None
+            self._texts = []
+            self._sources = []
             return
 
         self._ids = np.array(ids, dtype=np.int64)
+        self._texts = texts
+        self._sources = sources
         embeddings = np.array(embs, dtype=np.float32)
         # L2 归一化，后续用 dot product 代替 cosine
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
         norms = np.where(norms == 0, 1.0, norms)
         self._embeddings = embeddings / norms
 
-    def search(self, query_emb: np.ndarray, top_k: int = 10,
-               min_similarity: float = 0.0) -> list[tuple[float, int]]:
-        """返回 [(score, chunk_id), ...] 按分数降序"""
+    def search(self, query_emb, top_k: int = 10,
+               min_similarity: float = 0.0) -> list[tuple[float, int, str, str]]:
+        """返回 [(score, chunk_id, text, source), ...] 按分数降序"""
         if self._embeddings is None or self._ids is None:
             return []
 
@@ -67,9 +79,10 @@ class VectorStore:
             top_indices = np.argpartition(scores, -min(top_k, len(scores)))[-top_k:]
             top_indices = top_indices[np.argsort(scores[top_indices])[::-1]]
 
-        return [(float(scores[i]), int(self._ids[i])) for i in top_indices]
+        return [(float(scores[i]), int(self._ids[i]), self._texts[i], self._sources[i])
+                for i in top_indices]
 
-    def add(self, chunk_id: int, embedding: list[float]):
+    def add(self, chunk_id: int, embedding: list[float], text: str = "", source: str = ""):
         emb = np.array(embedding, dtype=np.float32)
         norm = np.linalg.norm(emb)
         if norm > 0:
@@ -78,18 +91,23 @@ class VectorStore:
         if self._embeddings is None:
             self._ids = np.array([chunk_id], dtype=np.int64)
             self._embeddings = emb.reshape(1, -1)
+            self._texts = [text]
+            self._sources = [source]
         else:
             self._ids = np.append(self._ids, chunk_id)
             self._embeddings = np.vstack([self._embeddings, emb])
+            self._texts.append(text)
+            self._sources.append(source)
 
     def remove(self, chunk_id: int):
-        """移除单个 ID（标记式，下次 rebuild 生效）"""
         if self._ids is None:
             return
         mask = self._ids != chunk_id
         if not mask.all():
             self._ids = self._ids[mask]
             self._embeddings = self._embeddings[mask]
+            self._texts = [t for i, t in enumerate(self._texts) if mask[i]]
+            self._sources = [s for i, s in enumerate(self._sources) if mask[i]]
 
     def remove_many(self, chunk_ids: list[int]):
         if self._ids is None:
@@ -99,6 +117,8 @@ class VectorStore:
         if not mask.all():
             self._ids = self._ids[mask]
             self._embeddings = self._embeddings[mask]
+            self._texts = [t for i, t in enumerate(self._texts) if mask[i]]
+            self._sources = [s for i, s in enumerate(self._sources) if mask[i]]
 
     def save(self):
         if self._embeddings is None:
@@ -116,6 +136,8 @@ class VectorStore:
     def clear(self):
         self._ids = None
         self._embeddings = None
+        self._texts = []
+        self._sources = []
 
     @property
     def size(self) -> int:
