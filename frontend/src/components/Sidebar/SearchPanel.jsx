@@ -8,7 +8,7 @@ export default function SearchPanel({ visible, value, onChange }) {
 
   if (!visible) return null;
   return (
-    <div style={{ padding: '4px 16px 8px' }}>
+    <div style={{ padding: '10px 16px 8px' }}>
       <div style={{ position: 'relative' }}>
         <input
           ref={inputRef}
