@@ -50,7 +50,7 @@ export default function Sidebar({ onOpenChunks, collapsed, onToggleCollapse }) {
         <SidebarHeader onSearchToggle={() => setSearchVisible(v => !v)} onCollapseToggle={handleCollapse} />
         <SearchPanel visible={searchVisible} value={state.filter || ''} onChange={filter => dispatch({ type: 'SET_FILTER', filter })} />
         <div style={{ padding: '4px 8px' }}>
-          <button className="sidebar-btn" onClick={() => dispatch({ type: 'NEW' })} style={{ width: '100%', fontSize: 12 }}>+ 新建对话</button>
+          <button className="sidebar-btn" onClick={() => dispatch({ type: 'NEW' })} style={{ width: '100%', fontSize: 13, padding: '8px 0' }}>+ 新建对话</button>
         </div>
         <ConversationList />
         <div style={{ borderTop: '1px solid var(--border)' }}>
