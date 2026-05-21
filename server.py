@@ -151,7 +151,7 @@ async def api_delete_doc(data: dict):
 
 
 @app.post("/api/docs/reindex")
-async def api_reindex():
+def api_reindex():
     log_lines = []
     import_docs(on_log=log_lines.append)
     from core.retrieve import clear_cache
@@ -272,7 +272,7 @@ def api_ask_stream(data: dict):
     )):
         history = None
 
-    async def sse_generate():
+    def sse_generate():
         try:
             for event_type, payload in ask_stream(question, history=history, llm_provider=llm_provider):
                 line = json.dumps({event_type: payload}, ensure_ascii=False)
@@ -288,20 +288,20 @@ def api_ask_stream(data: dict):
 
 
 @app.post("/api/import")
-async def api_import():
+def api_import():
     log_lines = []
     import_docs(on_log=log_lines.append)
     return {"message": "\n".join(log_lines) or "导入完成"}
 
 
 @app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...)):
+def api_upload(file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(400, "无文件")
     docs_dir = Path(__file__).parent / "docs"
     docs_dir.mkdir(exist_ok=True)
     save_path = docs_dir / Path(file.filename).name
-    content = await file.read()
+    content = file.file.read()
     with open(save_path, 'wb') as f:
         f.write(content)
     import_docs()
@@ -426,7 +426,8 @@ async def api_v1_chat_completions(data: dict, request: Request):
 
     try:
         from core.llm import chat
-        answer = chat(llm_messages)
+        import asyncio
+        answer = await asyncio.to_thread(chat, llm_messages)
     except Exception as e:
         return JSONResponse({"error": {"message": str(e), "type": "api_error"}}, 500)
 
@@ -439,7 +440,7 @@ async def api_v1_chat_completions(data: dict, request: Request):
 
 
 @app.post("/v1/embeddings")
-async def api_v1_embeddings(data: dict):
+def api_v1_embeddings(data: dict):
     inp = data.get("input", "")
     if isinstance(inp, str):
         texts = [inp]
