@@ -260,7 +260,7 @@ def api_ask(data: dict):
 
 
 @app.post("/api/ask/stream")
-def api_ask_stream(data: dict):
+async def api_ask_stream(data: dict):
     question = data.get("question", "").strip()
     if not question:
         raise HTTPException(400, "问题不能为空")
@@ -272,7 +272,7 @@ def api_ask_stream(data: dict):
     )):
         history = None
 
-    def sse_generate():
+    async def sse_generate():
         try:
             for event_type, payload in ask_stream(question, history=history, llm_provider=llm_provider):
                 line = json.dumps({event_type: payload}, ensure_ascii=False)
@@ -426,8 +426,7 @@ async def api_v1_chat_completions(data: dict, request: Request):
 
     try:
         from core.llm import chat
-        import asyncio
-        answer = await asyncio.to_thread(chat, llm_messages)
+        answer = chat(llm_messages)
     except Exception as e:
         return JSONResponse({"error": {"message": str(e), "type": "api_error"}}, 500)
 
