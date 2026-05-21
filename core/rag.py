@@ -4,7 +4,7 @@ RAG 编排层 — 串联检索 + 生成 + 对话
 import re
 from pathlib import Path
 
-from .config import LLM_CFG, STORAGE_CFG, RETRIEVAL_CFG
+from .config import STORAGE_CFG, RETRIEVAL_CFG
 from .llm import chat, chat_stream
 from .chunker import estimate_tokens, clean_text, split_text, split_with_structure, build_overview, extract_keywords
 from .embed import embed_single, clear_cache
@@ -109,29 +109,26 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     system_msg = {"role": "system", "content": "你是一个严谨的知识库助手，仅根据提供的参考内容回答问题。如果参考内容中找不到答案，请直接说\"根据已有资料，我无法回答这个问题\"，不要编造。请用中文回答，简洁明了。"}
 
     messages = [system_msg]
-        if history:
-            messages.extend(history)
-        messages.append({"role": "user", "content": prompt})
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": prompt})
 
-        full_answer = ""
-        think_idx = 0
-        think_step_interval = 6
-        token_count = 0
-        for kind, text in chat_stream(messages):
-            if kind == "think":
-                full_answer += text
-                yield ("think", text)
-            else:
-                full_answer += text
-                yield ("token", text)
-                token_count += 1
-                if think_idx < len(think_steps) and token_count >= think_step_interval:
-                    yield ("thinking", think_steps[think_idx])
-                    think_idx += 1
-                    token_count = 0
-    finally:
-        if llm_provider and previous_provider is not None:
-            LLM_CFG.provider = previous_provider
+    full_answer = ""
+    think_idx = 0
+    think_step_interval = 6
+    token_count = 0
+    for kind, text in chat_stream(messages, provider=llm_provider):
+        if kind == "think":
+            full_answer += text
+            yield ("think", text)
+        else:
+            full_answer += text
+            yield ("token", text)
+            token_count += 1
+            if think_idx < len(think_steps) and token_count >= think_step_interval:
+                yield ("thinking", think_steps[think_idx])
+                think_idx += 1
+                token_count = 0
 
     # 发出剩余的思考步骤
     while think_idx < len(think_steps):
@@ -156,7 +153,7 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
             retry_messages.extend(history)
         retry_messages.append({"role": "user", "content": prompt + f"\n\n（{retry_hint}）"})
         yield ("token", "\n[补充回答] ")
-        for kind, text in chat_stream(retry_messages):
+        for kind, text in chat_stream(retry_messages, provider=llm_provider):
             if kind == "think":
                 yield ("think", text)
             else:
@@ -169,7 +166,8 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
 # ── 导入文档 ───────────────────────────────────────
 from .parser import parse_file
 
-def import_docs():
+def import_docs(on_log=None):
+    _log = on_log or print
     STORAGE_CFG.docs_dir.mkdir(parents=True, exist_ok=True)
     files = []
     for ext in ("*.txt", "*.md", "*.docx", "*.pptx", "*.pdf", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"):
@@ -179,29 +177,29 @@ def import_docs():
     files = [f for f in files if not f.name.startswith("~$")]
 
     if not files:
-        print(f">>> 请在 {STORAGE_CFG.docs_dir} 目录放入文档，然后重新运行")
+        _log(f">>> 请在 {STORAGE_CFG.docs_dir} 目录放入文档，然后重新运行")
         return
 
     for fp in files:
         path = str(fp.resolve())
         if source_exists(path):
-            print(f"  跳过 (已导入): {fp.name}")
+            _log(f"  跳过 (已导入): {fp.name}")
             continue
 
         try:
             text = parse_file(str(fp))
         except Exception as e:
-            print(f"  跳过 ({e}): {fp.name}")
+            _log(f"  跳过 ({e}): {fp.name}")
             continue
 
         text = clean_text(text)
         if not text.strip():
-            print(f"  无有效内容: {fp.name}")
+            _log(f"  无有效内容: {fp.name}")
             continue
 
         structured = split_with_structure(text)
         if not structured:
-            print(f"  无有效内容: {fp.name}")
+            _log(f"  无有效内容: {fp.name}")
             continue
 
         # 去重
@@ -225,7 +223,7 @@ def import_docs():
         # 建立父子关系：最近的一级标题作为父节点
         texts = [c["text"] for c in unique]
         parent_ids: dict[str, int] = {}  # heading -> parent chunk id
-        print(f"  向量化 {fp.name} ({len(texts)} 块)...", end=" ", flush=True)
+        _log(f"  向量化 {fp.name} ({len(texts)} 块)...")
         from .embed import embed
         embeddings = embed(texts)
         for c, emb in zip(unique, embeddings):
@@ -236,7 +234,7 @@ def import_docs():
             if level == 1 and heading:
                 parent_ids[heading] = cid
         insert_source(path)
-        print("完成")
+        _log("完成")
 
 
 # ── 块管理 ──────────────────────────────────────────
