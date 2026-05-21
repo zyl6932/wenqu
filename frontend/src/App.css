@@ -476,8 +476,8 @@ pre:hover .code-copy-btn { opacity:1; }
   .sidebar-backdrop.open{display:block;}
   .btn-toggle-sidebar{display:flex!important;}
   .message{max-width:95%;}
-  .chat-messages{padding:12px 16px 0;}
-  .chat-input-area{padding:12px 16px;}
+  .chat-messages{padding:12px 50px 0;}
+  .chat-input-area{padding:12px 50px;}
   .chat-header { padding-left: 50px !important; }
 
   .sidebar.open ~ .mobile-menu-btn { display: none; }
