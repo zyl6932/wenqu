@@ -133,29 +133,36 @@ class _BM25Index:
     """
 
     def __init__(self):
-        self.docs: list[tuple[int, str, str, list[str]]] = []  # [(id, source, text, tokens)]
-        self.df: dict[str, int] = {}         # 文档频率：词→出现在几个文档中
-        self.avgdl: float = 0.0             # 平均文档长度（词数）
-        self.n: int = 0                     # 文档总数
+        self.docs: list[tuple[int, str, str, list[str]]] = []
+        self.df: dict[str, int] = {}
+        self.avgdl: float = 0.0
+        self.n: int = 0
         self._built = False
+        self._lock = threading.RLock()
 
     def build(self):
-        """构建索引：加载所有 chunk，分词，统计 DF"""
+        """构建索引：加载所有 chunk，分词，统计 DF（COW 模式，原子替换）"""
         rows = load_all_chunks()
-        self.docs, self.df = [], {}
+        docs: list = []
+        df: dict[str, int] = {}
         total_len = 0
         for chunk_id, source, text, _ in rows:
             tokens = _tokenize(text)
-            self.docs.append((chunk_id, source, text, tokens))
+            docs.append((chunk_id, source, text, tokens))
             total_len += len(tokens)
             seen = set()
             for t in tokens:
                 if t not in seen:
-                    self.df[t] = self.df.get(t, 0) + 1
+                    df[t] = df.get(t, 0) + 1
                     seen.add(t)
-        self.n = len(self.docs)
-        self.avgdl = total_len / self.n if self.n else 1
-        self._built = True
+        n = len(docs)
+        avgdl = total_len / n if n else 1
+        with self._lock:
+            self.docs = docs
+            self.df = df
+            self.n = n
+            self.avgdl = avgdl
+            self._built = True
 
     def search(self, query: str, top_k: int = 10) -> list[tuple[float, int, str, str]]:
         """
@@ -164,16 +171,21 @@ class _BM25Index:
         IDF 公式：IDF(t) = max(0, ln((N - df + 0.5) / (df + 0.5)) + 1)
         该公式确保：高频词（DF大）IDF 趋近 0，低频词 IDF 高
         """
-        if not self._built:
-            self.build()
+        with self._lock:
+            if not self._built:
+                self.build()
+            docs = self.docs
+            df = self.df
+            n = self.n
+            avgdl = self.avgdl
         q_tokens = _tokenize(query)
-        if not q_tokens or not self.docs:
+        if not q_tokens or not docs:
             return []
         # 计算每个查询词的 IDF
-        idf = {t: max(0, (self.n - self.df.get(t, 0) + 0.5) / (self.df.get(t, 0) + 0.5) + 1)
+        idf = {t: max(0, (n - df.get(t, 0) + 0.5) / (df.get(t, 0) + 0.5) + 1)
                for t in set(q_tokens)}
         scored = []
-        for chunk_id, source, text, doc_tokens in self.docs:
+        for chunk_id, source, text, doc_tokens in docs:
             if not doc_tokens:
                 continue
             dl = len(doc_tokens)
@@ -187,7 +199,7 @@ class _BM25Index:
                     # 标准 BM25 公式
                     score += idf.get(qt, 0) * (f * (RETRIEVAL_CFG.bm25_k1 + 1)) / (
                         f + RETRIEVAL_CFG.bm25_k1 * (1 - RETRIEVAL_CFG.bm25_b +
-                                                      RETRIEVAL_CFG.bm25_b * dl / self.avgdl)
+                                                      RETRIEVAL_CFG.bm25_b * dl / avgdl)
                     )
             if score > 0:
                 scored.append((score, chunk_id, text, source))
@@ -196,7 +208,8 @@ class _BM25Index:
 
     def invalidate(self):
         """清空索引缓存，下次查询时重建"""
-        self._built = False
+        with self._lock:
+            self._built = False
 
 
 _bm25 = _BM25Index()
