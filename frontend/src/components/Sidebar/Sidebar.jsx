@@ -4,7 +4,6 @@ import SidebarHeader from './SidebarHeader';
 import SearchPanel from './SearchPanel';
 import ConversationList from './ConversationList';
 import SettingsModal from './SettingsModal';
-import DocSection from './DocSection';
 
 export default function Sidebar({ onOpenChunks, collapsed, onToggleCollapse }) {
   const [searchVisible, setSearchVisible] = useState(false);
@@ -60,8 +59,7 @@ export default function Sidebar({ onOpenChunks, collapsed, onToggleCollapse }) {
             </svg>
             设置
           </button>
-          <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
-          <DocSection onOpenChunks={onOpenChunks} />
+          <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} onOpenChunks={onOpenChunks} />
         </div>
       </aside>
     </>

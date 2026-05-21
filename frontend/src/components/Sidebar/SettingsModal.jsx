@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import ThemeToggle from './ThemeToggle';
 import FontSizeControl from './FontSizeControl';
 import ExportButton from './ExportButton';
+import DocSection from './DocSection';
 import { fetchConfig, updateConfig } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 
-export default function SettingsModal({ visible, onClose }) {
+export default function SettingsModal({ visible, onClose, onOpenChunks }) {
   const [cfg, setCfg] = useState(null);
   const [dirty, setDirty] = useState(false);
   const { addToast } = useToast();
@@ -97,6 +98,9 @@ export default function SettingsModal({ visible, onClose }) {
 
           <div className="settings-section">
             <ExportButton />
+          </div>
+          <div className="settings-section" style={{ paddingTop: 10 }}>
+            <DocSection onOpenChunks={onOpenChunks} />
           </div>
         </div>
       </div>
