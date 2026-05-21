@@ -113,3 +113,5 @@ export async function uploadFile(formData) {
 export const fetchConfig = () => request('GET', '/api/config');
 
 export const updateConfig = (cfg) => request('POST', '/api/config', cfg);
+
+export const genTitle = (question) => request('POST', '/api/title', { question });

@@ -143,6 +143,8 @@ class APIHandler(SimpleHTTPRequestHandler):
             self._handle_split_chunk()
         elif path == "/api/chunks/merge":
             self._handle_merge_chunks()
+        elif path == "/api/title":
+            self._handle_gen_title()
         elif path == "/api/config":
             self._handle_config_update()
         elif path == "/api/feedback":
@@ -587,6 +589,21 @@ class APIHandler(SimpleHTTPRequestHandler):
                 {"id": "wenqu-v1", "object": "model", "owned_by": "wenqu"},
             ]
         })
+
+    def _handle_gen_title(self):
+        data = self._read_body()
+        question = data.get("question", "").strip()
+        if not question:
+            self._json({"error": "问题不能为空"}, 400)
+            return
+        try:
+            from core.llm import chat
+            prompt = f"为以下用户问题生成一个简洁的对话标题（最多15字，不要引号，直接输出标题文本）：\n\n{question}"
+            title = chat([{"role": "user", "content": prompt}])
+            title = title.strip().strip('"').strip("'").strip()[:20]
+            self._json({"title": title or question[:15]})
+        except Exception as e:
+            self._json({"title": question[:15]})
 
     def _handle_config_update(self):
         data = self._read_body()

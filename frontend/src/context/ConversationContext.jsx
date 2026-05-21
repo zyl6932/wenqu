@@ -57,7 +57,7 @@ function convReducer(state, action) {
       }
       const conv = state.conversations.find(c => c.id === state.activeConvId);
       if (!conv) return state;
-      const title = conv.title === '新对话' || conv.title === '未命名' ? action.content.slice(0, 30) + (action.content.length > 30 ? '...' : '') : conv.title;
+      const title = conv.title;
       next = {
         ...state,
         conversations: state.conversations.map(c => c.id === state.activeConvId

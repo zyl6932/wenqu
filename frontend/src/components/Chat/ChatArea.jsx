@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useConversation } from '../../context/ConversationContext';
 import { useToast } from '../../context/ToastContext';
-import { askStream } from '../../api/client';
+import { askStream, genTitle } from '../../api/client';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 
@@ -19,8 +19,20 @@ export default function ChatArea({ sidebarCollapsed }) {
     const prevMessages = getActiveConv()?.messages || [];
     addSearchHistory(question);
 
+    const convBefore = getActiveConv();
+
     dispatch({ type: 'ADD_USER_MSG', content: question });
     dispatch({ type: 'ADD_AI_MSG' });
+
+    // 新对话 → 异步生成标题
+    if ((!convBefore || convBefore.title === '新对话') && prevMessages.length === 0) {
+      genTitle(question).then(data => {
+        const newConv = getActiveConv();
+        if (newConv && data?.title) {
+          dispatch({ type: 'RENAME', id: newConv.id, title: data.title });
+        }
+      }).catch(() => {});
+    }
 
     const history = prevMessages
       .filter(m => m.role !== 'ai' || m.content)
