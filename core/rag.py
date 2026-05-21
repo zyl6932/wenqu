@@ -72,6 +72,7 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     dynamic_k = _smart_top_k(question)
     tk = max(top_k or RETRIEVAL_CFG.top_k, dynamic_k)
     trace: dict = {}
+    yield ("thinking", "正在检索相关知识…")
     result = retrieve(enriched_q, top_k=tk, trace=trace)
 
     if result is None:
@@ -85,22 +86,20 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     source_names = [Path(s).name for s in source_paths]
     yield ("sources", source_names)
 
-    # 构建完整思考过程
-    lines = []
-    lines.append(f"原始问题：{trace.get('original', question)}")
+    # 逐步发送思考过程，前端逐条流式渲染
+    yield ("thinking", f"问题：{trace.get('original', question)}")
     if trace.get("corrected"):
-        lines.append(f"拼写纠错：{trace['corrected']}")
+        yield ("thinking", f"纠错：{trace['corrected']}")
     if trace.get("expanded"):
-        lines.append(f"查询扩展：{trace['expanded']}")
+        yield ("thinking", f"扩展：{trace['expanded']}")
     if trace.get("rewritten"):
-        lines.append(f"查询改写：{trace['rewritten']}")
-    lines.append(f"检索范围：{trace.get('total_chunks', 0)} 个向量块")
+        yield ("thinking", f"改写：{trace['rewritten']}")
+    yield ("thinking", f"检索 {trace.get('total_chunks', 0)} 个向量块中…")
     if trace.get("docs_matched"):
-        lines.append(f"匹配文档：{', '.join(trace['docs_matched'])}")
-    lines.append(f"语义检索：{trace.get('semantic_top', 0)} 个候选（最高相似度 {trace.get('top_score', 0)}）")
-    lines.append(f"BM25 检索：{trace.get('bm25_top', 0)} 个候选")
-    lines.append(f"RRF 融合：{trace.get('fused_count', 0)} 个候选 → 最终返回 {len(contexts)} 个片段")
-    yield ("thinking", "\n".join(lines))
+        yield ("thinking", f"匹配文档：{', '.join(trace['docs_matched'])}")
+    yield ("thinking", f"语义检索 {trace.get('semantic_top', 0)} 个候选（最高 {trace.get('top_score', 0)}）")
+    yield ("thinking", f"BM25 检索 {trace.get('bm25_top', 0)} 个候选")
+    yield ("thinking", f"RRF 融合 → 返回 {len(contexts)} 个片段")
 
     prompt = build_prompt(contexts, question)
 
