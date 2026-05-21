@@ -20,8 +20,14 @@
 - **标题栏对齐**：侧边栏收起时标题自动右移避开展开按钮，收起/展开时动态 padding
 - **LLM 兼容**：`reasoning_content` 空值不阻塞普通 token，新增 `deepseek-v4-flash` 模型支持
 - **检索性能**：BM25 索引缓存、embedding 二进制存储、numpy 向量计算（Phase 1+2）
+- **HTTP 层升级**：`http.server` → FastAPI + uvicorn（SSE 改用 StreamingResponse，CORS 中间件，客户端断连检测，减少 ~200 行）
+- **文档增量索引**：sources 表记录文件 mtime，`import_docs()` 自动检测变更并重新索引，不再需要手动删了再导
+- **LLM 摘要可选**：导入时 LLM 摘要生成默认关闭（`generate_summary=False`），不再拖慢导入
+- LLM provider 线程安全：`llm_provider` 沿调用链传参，不再修改全局配置
+- `sys.stdout` 劫持移除：`import_docs()` 改用 `on_log` 回调
 - 后台启动不再因 `input()` EOFError 崩溃
-- 测试从 37 升至 39 个（LLM 切换 + 配置端点）
+- 新增 `POST /api/docs/reindex` 端点
+- 测试保持 39 个全部通过
 
 ### 修复 (2026-05-21)
 - `chat_header` 与 `sidebar-header` 高度对齐（line-height 30px + padding 16px 统一）
