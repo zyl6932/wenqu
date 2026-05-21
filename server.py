@@ -808,7 +808,8 @@ def main():
 
     # 启动前自检
     if not startup_diagnostics(port):
-        input("\n按 Enter 退出...")
+        try: input("\n按 Enter 退出...")
+        except (EOFError, OSError): pass
         sys.exit(1)
 
     server = ThreadingHTTPServer(("0.0.0.0", port), APIHandler)
