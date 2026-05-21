@@ -10,8 +10,10 @@
 ## 常用命令
 ```bash
 python server.py                  # 启动服务 (localhost:8080)
-python run_tests.py               # 运行测试 (33 tests)
+python run_tests.py               # 运行测试 (47 tests, 完整版 160s)
 cd frontend && npm run build      # 构建 React 前端
+```
+推送前 pre-push hook 自动跑 21 个快速测试（0.5s），发 release 时需手动跑全量 `python run_tests.py`。
 pip install -r requirements.txt   # 安装 Python 依赖
 cd frontend && npm install        # 安装前端依赖
 ```
@@ -34,10 +36,12 @@ git push
 ### 发布新版本
 不要每次都发 —— 积累足够多改动后再发（如 5-10 个功能/修复）。
 ```bash
-# 1. 将 CHANGELOG.md 中 Unreleased 的内容移到新版本号下
-# 2. 确保 pyproject.toml 版本号正确
-# 3. 提交并推送
-# 4. 创建 GitHub Release
+# 1. 跑全量测试（必须全部通过）
+python run_tests.py
+# 2. 将 CHANGELOG.md 中 Unreleased 的内容移到新版本号下
+# 3. 确保 pyproject.toml 版本号正确
+# 4. 提交并推送
+# 5. 创建 GitHub Release
 gh release create vX.Y.Z --title "vX.Y.Z - 简述" --notes-file CHANGELOG.md
 ```
 版本号遵循 semver：`v主.次.补丁`（如 v0.1.0 → v0.2.0 → v1.0.0）
