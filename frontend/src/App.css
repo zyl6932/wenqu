@@ -479,6 +479,6 @@ pre:hover .code-copy-btn { opacity:1; }
   .chat-messages{padding:12px 50px 0;}
   .chat-input-area{padding:12px 50px;}
   .chat-header { padding-left: 50px !important; }
-
+  .settings-modal { width: 90vw; max-width: 380px; }
 }
 @media(min-width:769px){ .btn-toggle-sidebar{display:flex;} }

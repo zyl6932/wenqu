@@ -295,9 +295,13 @@ def api_import():
 
 
 @app.post("/api/upload")
-def api_upload(file: UploadFile = File(...)):
+def api_upload(file: UploadFile = File(...), request: Request | None = None):
     if not file.filename:
         raise HTTPException(400, "无文件")
+    if request:
+        cl = request.headers.get("content-length")
+        if cl and int(cl) > 100 * 1024 * 1024:
+            raise HTTPException(413, "文件大小不能超过 100MB")
     docs_dir = Path(__file__).parent / "docs"
     docs_dir.mkdir(exist_ok=True)
     save_path = docs_dir / Path(file.filename).name
