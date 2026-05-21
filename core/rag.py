@@ -86,20 +86,21 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     source_names = [Path(s).name for s in source_paths]
     yield ("sources", source_names)
 
-    # 逐步发送思考过程，前端逐条流式渲染
-    yield ("thinking", f"问题：{trace.get('original', question)}")
+    # 准备思考步骤（不立即发送，穿插在 token 流中）
+    think_steps = []
+    think_steps.append(f"问题：{trace.get('original', question)}")
     if trace.get("corrected"):
-        yield ("thinking", f"纠错：{trace['corrected']}")
+        think_steps.append(f"纠错：{trace['corrected']}")
     if trace.get("expanded"):
-        yield ("thinking", f"扩展：{trace['expanded']}")
+        think_steps.append(f"扩展：{trace['expanded']}")
     if trace.get("rewritten"):
-        yield ("thinking", f"改写：{trace['rewritten']}")
-    yield ("thinking", f"检索 {trace.get('total_chunks', 0)} 个向量块中…")
+        think_steps.append(f"改写：{trace['rewritten']}")
+    think_steps.append(f"检索 {trace.get('total_chunks', 0)} 个向量块中…")
     if trace.get("docs_matched"):
-        yield ("thinking", f"匹配文档：{', '.join(trace['docs_matched'])}")
-    yield ("thinking", f"语义检索 {trace.get('semantic_top', 0)} 个候选（最高 {trace.get('top_score', 0)}）")
-    yield ("thinking", f"BM25 检索 {trace.get('bm25_top', 0)} 个候选")
-    yield ("thinking", f"RRF 融合 → 返回 {len(contexts)} 个片段")
+        think_steps.append(f"匹配文档：{', '.join(trace['docs_matched'])}")
+    think_steps.append(f"语义检索 {trace.get('semantic_top', 0)} 个候选（最高 {trace.get('top_score', 0)}）")
+    think_steps.append(f"BM25 检索 {trace.get('bm25_top', 0)} 个候选")
+    think_steps.append(f"RRF 融合 → 返回 {len(contexts)} 个片段")
 
     prompt = build_prompt(contexts, question)
 
@@ -111,6 +112,9 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
     messages.append({"role": "user", "content": prompt})
 
     full_answer = ""
+    think_idx = 0
+    think_step_interval = 6  # 每 6 个 token 发一条思考步骤
+    token_count = 0
     for kind, text in chat_stream(messages):
         if kind == "think":
             full_answer += text
@@ -118,6 +122,17 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
         else:
             full_answer += text
             yield ("token", text)
+            token_count += 1
+            # 穿插思考步骤到 token 流中
+            if think_idx < len(think_steps) and token_count >= think_step_interval:
+                yield ("thinking", think_steps[think_idx])
+                think_idx += 1
+                token_count = 0
+
+    # 发出剩余的思考步骤
+    while think_idx < len(think_steps):
+        yield ("thinking", think_steps[think_idx])
+        think_idx += 1
 
     # 质量兜底
     need_retry = False
