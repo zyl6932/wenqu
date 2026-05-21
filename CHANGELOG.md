@@ -29,6 +29,7 @@
 - **LLM 摘要可选**：导入时 LLM 摘要生成默认关闭（`generate_summary=False`），不再拖慢导入
 - LLM provider 线程安全：`llm_provider` 沿调用链传参，不再修改全局配置
 - `sys.stdout` 劫持移除：`import_docs()` 改用 `on_log` 回调
+- **pre-push hook 加速**：仅跑非 Ollama 测试（21 个，0.5s），完整测试留给 CI、手动跑 `python run_tests.py`
 - 后台启动不再因 `input()` EOFError 崩溃
 - 新增 `POST /api/docs/reindex` 端点
 - 测试保持 39 个全部通过

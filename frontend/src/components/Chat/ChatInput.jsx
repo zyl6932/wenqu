@@ -37,7 +37,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
 
   function handleKeyDown(e) {
     if (isComposing || e.isComposing || e.keyCode === 229) return;
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
       e.preventDefault();
       handleSend();
     }

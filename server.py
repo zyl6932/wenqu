@@ -317,6 +317,8 @@ def api_upload(file: UploadFile = File(...), request: Request | None = None):
     with open(save_path, 'wb') as f:
         f.write(content)
     import_docs()
+    from core.retrieve import clear_cache
+    clear_cache()
     return {"message": f"已上传并导入 {file.filename}"}
 
 

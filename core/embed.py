@@ -65,4 +65,5 @@ def cosine(a: list[float], b: list[float]) -> float:
 
 
 def clear_cache():
-    _embed_cache.clear()
+    with _cache_lock:
+        _embed_cache.clear()
