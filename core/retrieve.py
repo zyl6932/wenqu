@@ -47,7 +47,27 @@ from .storage import (
     overview_sources, get_feedback_boost,
 )
 
-_retrieval_cache: dict[str, tuple[list[str], list[str]] | None] = {}
+from collections import OrderedDict
+
+_RETRIEVAL_CACHE_MAX = 1000
+_retrieval_cache: OrderedDict[str, tuple[list[str], list[str]] | None] = OrderedDict()
+
+
+def _cache_get(key: str):
+    """LRU 读取：命中时移到末尾（最近使用）"""
+    if key in _retrieval_cache:
+        _retrieval_cache.move_to_end(key)
+        return _retrieval_cache[key]
+    return None
+
+
+def _cache_set(key: str, value):
+    """LRU 写入：超出上限时淘汰最久未使用的"""
+    if key in _retrieval_cache:
+        _retrieval_cache.move_to_end(key)
+    _retrieval_cache[key] = value
+    while len(_retrieval_cache) > _RETRIEVAL_CACHE_MAX:
+        _retrieval_cache.popitem(last=False)
 
 
 # ═══════════════════════════════════════════════════════
@@ -470,13 +490,14 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
     cache_key = f"{question}|{tk}|{ex}"
 
     # 缓存命中：同一问题 + 同参数直接返回上次结果
-    if cache_key in _retrieval_cache:
-        return _retrieval_cache[cache_key]
+    cached = _cache_get(cache_key)
+    if cached is not None or cache_key in _retrieval_cache:
+        return cached
 
     # 知识库为空
     from .storage import count_chunks
     if count_chunks() == 0:
-        _retrieval_cache[cache_key] = None
+        _cache_set(cache_key, None)
         return None
 
     # ── 步骤 ①②③：查询预处理 ──
@@ -557,9 +578,9 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
         if kw_results:
             contexts = [t for _, _, t, _ in kw_results]
             sources = list(set(src for _, _, _, src in kw_results))
-            _retrieval_cache[cache_key] = (contexts, sources)
+            _cache_set(cache_key, (contexts, sources))
             return contexts, sources
-        _retrieval_cache[cache_key] = None
+        _cache_set(cache_key, None)
         return None
 
     top = fused

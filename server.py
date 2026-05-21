@@ -351,11 +351,8 @@ class APIHandler(SimpleHTTPRequestHandler):
         page = max(1, int(params.get("page", ["1"])[0]))
         page_size = min(100, max(1, int(params.get("page_size", ["50"])[0])))
         try:
-            all_chunks = list_chunks(source)
-            total = len(all_chunks)
-            offset = (page - 1) * page_size
-            paged = all_chunks[offset:offset + page_size]
-            self._json({"chunks": paged, "total": total, "page": page, "page_size": page_size})
+            chunks, total = list_chunks(source, page=page, page_size=page_size)
+            self._json({"chunks": chunks, "total": total, "page": page, "page_size": page_size})
         except Exception as e:
             log_error(f"{self.command} {self.path}: {e}")
             self._json({"error": str(e)}, 500)
