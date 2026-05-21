@@ -2,6 +2,7 @@
 测试用例 — 覆盖核心模块
 运行: python run_tests.py
 """
+import json
 import os
 import sys
 import unittest
@@ -456,6 +457,149 @@ class BM25Test(unittest.TestCase):
         self.assertNotIn("，", tokens)
 
 
+# ── 回归测试（针对已知 bug）──────────────────────────
+class RegressionTest(unittest.TestCase):
+    def test_embed_deserialize_both_formats(self):
+        """嵌入反序列化兼容 JSON 和 numpy binary 两种存储格式"""
+        import numpy as np
+        from core.embed import embed_single
+
+        # 生成和存储一样格式的 embedding
+        emb = embed_single("测试")
+        # JSON 字符串
+        json_str = json.dumps(emb)
+        loaded_from_json = json.loads(json_str)
+        self.assertEqual(len(loaded_from_json), len(emb))
+
+        # numpy binary
+        binary = np.array(emb, dtype=np.float32).tobytes()
+        loaded_from_binary = np.frombuffer(binary, dtype=np.float32).tolist()
+        self.assertEqual(len(loaded_from_binary), len(emb))
+        # 数值近似相等（float32 精度）
+        for a, b in zip(loaded_from_binary, emb):
+            self.assertAlmostEqual(a, b, delta=1e-5)
+
+    def test_parser_rejects_legacy_doc(self):
+        """旧 .doc 格式应被拒绝并给出清晰错误，而非 UTF-8 崩溃"""
+        from core.parser import parse_file
+        import tempfile
+        # 创建假的 .doc 文件
+        with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as f:
+            f.write(b'\xbe\x00\x00\x00')
+            tmp_path = f.name
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                parse_file(tmp_path)
+            self.assertIn("旧版 .doc 格式不支持", str(ctx.exception))
+        finally:
+            os.unlink(tmp_path)
+
+    def test_import_skips_doc_files(self):
+        """import_docs 导入时跳过 .doc 文件而不崩溃"""
+        from core.rag import import_docs
+        log_lines = []
+        import_docs(on_log=log_lines.append)
+        # 确认没有任何 UTF-8 错误出现在输出中
+        output = " ".join(log_lines)
+        self.assertNotIn("utf-8", output.lower())
+        self.assertNotIn("UnicodeDecodeError", output)
+
+    def test_config_all_keys_present(self):
+        """运行时配置返回完整字段"""
+        from core.config import get_runtime_config
+        cfg = get_runtime_config()
+        for key in ("min_similarity", "top_k", "enable_query_rewrite", "enable_rerank"):
+            self.assertIn(key, cfg)
+
+
+class StaticFileTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = "http://localhost:8080"
+        cls.server_up = _server_up()
+
+    def _skip_if_down(self):
+        if not self.server_up:
+            self.skipTest("服务器未运行")
+
+    def test_js_file_served(self):
+        self._skip_if_down()
+        import urllib.request
+        # 先读 index.html 找到 JS 文件名
+        resp = urllib.request.urlopen(f"{self.base}/", timeout=5)
+        html = resp.read().decode("utf-8")
+        import re
+        m = re.search(r'/assets/(index-[a-zA-Z0-9_-]+\.js)', html)
+        if not m:
+            self.skipTest("JS filename not found in HTML")
+        js_path = f"/assets/{m.group(1)}"
+        resp = urllib.request.urlopen(f"{self.base}{js_path}", timeout=5)
+        self.assertEqual(resp.status, 200)
+        self.assertIn("application/javascript", resp.headers.get("Content-Type", ""))
+
+    def test_css_file_served(self):
+        self._skip_if_down()
+        import urllib.request
+        resp = urllib.request.urlopen(f"{self.base}/", timeout=5)
+        html = resp.read().decode("utf-8")
+        import re
+        m = re.search(r'/assets/(index-[a-zA-Z0-9_-]+\.css)', html)
+        if not m:
+            self.skipTest("CSS filename not found in HTML")
+        css_path = f"/assets/{m.group(1)}"
+        resp = urllib.request.urlopen(f"{self.base}{css_path}", timeout=5)
+        self.assertEqual(resp.status, 200)
+        self.assertIn("text/css", resp.headers.get("Content-Type", ""))
+
+
+class AskStreamTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = "http://localhost:8080"
+        cls.server_up = _server_up()
+
+    def _skip_if_down(self):
+        if not self.server_up:
+            self.skipTest("服务器未运行")
+
+    def test_ask_stream_returns_data(self):
+        """流式问答能正常返回数据（不会 UTF-8 崩溃或无响应）"""
+        self._skip_if_down()
+        import urllib.request, json
+        body = json.dumps({"question": "测试"}).encode()
+        req = urllib.request.Request(f"{self.base}/api/ask/stream", data=body, method="POST")
+        req.add_header("Content-Type", "application/json")
+        resp = urllib.request.urlopen(req, timeout=30)
+        content_type = resp.headers.get("Content-Type", "")
+        self.assertIn("event-stream", content_type)
+        # 读取至少一条有效输出
+        lines = []
+        for _ in range(30):
+            line = resp.readline().decode("utf-8").strip()
+            if line:
+                lines.append(line)
+            if any(ev in line for ev in ("token", "error", "thinking")):
+                break
+        self.assertGreater(len(lines), 0, "SSE 流未返回任何数据")
+
+    def test_ask_stream_no_utf8_error(self):
+        """流式问答不会返回 UTF-8 解码错误"""
+        self._skip_if_down()
+        import urllib.request, json
+        body = json.dumps({"question": "测试"}).encode()
+        req = urllib.request.Request(f"{self.base}/api/ask/stream", data=body, method="POST")
+        req.add_header("Content-Type", "application/json")
+        resp = urllib.request.urlopen(req, timeout=30)
+        for _ in range(50):
+            line = resp.readline().decode("utf-8").strip()
+            if line and "error" in line:
+                data = json.loads(line[6:])  # strip "data: "
+                self.assertNotIn("utf-8", data.get("error", "").lower())
+                self.assertNotIn("UnicodeDecodeError", data.get("error", ""))
+                self.assertNotIn("list index out of range", data.get("error", ""))
+                break
+
+
 if __name__ == '__main__':
     print("=" * 60)
     print("  知识库测试套件")
@@ -465,7 +609,8 @@ if __name__ == '__main__':
     else:
         suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
         filtered = unittest.TestSuite()
-        for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest, APIConfigTest, LLMProviderTest]:
+        for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest,
+                           APIConfigTest, LLMProviderTest, RegressionTest, StaticFileTest, AskStreamTest]:
             filtered.addTests(unittest.TestLoader().loadTestsFromTestCase(test_class))
         runner = unittest.TextTestRunner(verbosity=2)
         result = runner.run(filtered)
