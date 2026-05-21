@@ -13,7 +13,7 @@ export default function App() {
   const [docPath, setDocPath] = useState(null);
   const [chunkSource, setChunkSource] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    () => localStorage.getItem('wenqu_sidebar_collapsed') === 'true'
+    () => localStorage.getItem('wenqu_sidebar_collapsed') !== 'false'
   );
   const { dispatch } = useConversation();
   const { addToast } = useToast();
