@@ -463,7 +463,7 @@ pre:hover .code-copy-btn { opacity:1; }
 /* responsive */
 @media(max-width:768px){
   .mobile-menu-btn {
-    display: flex; position: fixed; left: 14px; top: 14px; z-index: 55;
+    display: flex; position: fixed; left: 14px; top: 17px; z-index: 55;
     width: 28px; height: 28px; border: none;
     background: transparent; color: var(--ink-mute);
     cursor: pointer; align-items: center; justify-content: center;
@@ -480,8 +480,5 @@ pre:hover .code-copy-btn { opacity:1; }
   .chat-input-area{padding:12px 50px;}
   .chat-header { padding-left: 50px !important; }
 
-  .sidebar.open ~ .mobile-menu-btn { display: none; }
-}
-  .mobile-menu-btn:hover { opacity: 1; color: var(--ink); }
 }
 @media(min-width:769px){ .btn-toggle-sidebar{display:flex;} }
