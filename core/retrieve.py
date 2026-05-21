@@ -47,8 +47,6 @@ from .chunker import estimate_tokens, TOKEN_RE
 from .storage import (
     load_all_chunks, overview_sources, get_feedback_boost,
 )
-from .vector_store import get_vector_store
-
 from collections import OrderedDict
 
 _RETRIEVAL_CACHE_MAX = 1000
@@ -448,7 +446,11 @@ def _document_level_retrieval(question: str) -> list[str]:
         rows = load_all_chunks(source)
         for cid, src, t, emb_blob in rows:
             if t == text:
-                emb = json.loads(emb_blob)
+                try:
+                    emb = json.loads(emb_blob)
+                except Exception:
+                    import numpy as np
+                    emb = np.frombuffer(emb_blob, dtype=np.float32).tolist()
                 scored.append((cosine(q_emb, emb), source))
                 break
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -537,12 +539,20 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
     steps["docs_matched"] = [Path(d).name for d in relevant_docs] if relevant_docs else []
 
     # ── 步骤 ⑤：向量语义检索 ──
-    # numpy 内存矩阵批量 cosine（VectorStore），替代原 json.loads 逐条扫描
     q_emb = embed_single(rewritten_q)
-    vs = get_vector_store()
-    steps["total_chunks"] = vs.size
-    sem_top = vs.search(np.asarray(q_emb, dtype=np.float32),
-                        top_k=tk * 2, min_similarity=RETRIEVAL_CFG.min_similarity)
+    primary_rows = load_all_chunks()
+    sem_scored = []
+    for chunk_id, source, text, emb_blob in primary_rows:
+        try:
+            emb = json.loads(emb_blob)
+        except Exception:
+            import numpy as np
+            emb = np.frombuffer(emb_blob, dtype=np.float32).tolist()
+        score = cosine(q_emb, emb)
+        sem_scored.append((score, chunk_id, text, source))
+    sem_scored.sort(key=lambda x: x[0], reverse=True)
+    steps["total_chunks"] = len(primary_rows)
+    sem_top = [item for item in sem_scored if item[0] >= RETRIEVAL_CFG.min_similarity][:tk * 2]
     steps["semantic_top"] = len(sem_top)
     steps["top_score"] = round(sem_top[0][0], 3) if sem_top else 0
 

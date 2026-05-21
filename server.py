@@ -303,7 +303,7 @@ def api_import():
 
 
 @app.post("/api/upload")
-def api_upload(file: UploadFile = File(...), request: Request | None = None):
+def api_upload(file: UploadFile = File(...), request=None):
     if not file.filename:
         raise HTTPException(400, "无文件")
     if request:

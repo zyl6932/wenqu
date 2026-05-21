@@ -149,6 +149,8 @@ def parse_file(filepath: str) -> str:
         except Exception:
             pass
         return text
+    elif suffix == ".doc":
+        raise ValueError(f"旧版 .doc 格式不支持，请转换为 .docx：{fp.name}")
     elif suffix in IMAGE_FORMATS:
         return describe_image(filepath)
     else:
