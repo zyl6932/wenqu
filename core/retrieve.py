@@ -571,8 +571,8 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
     fused = boosted
 
     # ── 步骤 ⑨：LLM 重排序 ──
-    # 当候选 > top_k 时，让 LLM 挑选最相关的（可关闭，省 2-3s）
-    if len(fused) > tk:
+    # 当候选 > top_k 时，让 LLM 挑选最相关的（默认关闭，省 2-3s + 1 次 LLM 调用）
+    if RETRIEVAL_CFG.enable_rerank and len(fused) > tk:
         fused = rerank(corrected_q, fused, top_k=tk)
 
     # ── 兜底：两路都没找到候选 → 关键词暴力匹配 ──

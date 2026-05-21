@@ -135,17 +135,12 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
         yield ("thinking", think_steps[think_idx])
         think_idx += 1
 
-    # 质量兜底
+    # 质量兜底：仅对明显截断的回答重试，不含"无法回答"（那是 KB 确实没信息，重试浪费 token）
     need_retry = False
     retry_hint = ""
-    if len(full_answer.strip()) < 15:
+    if len(full_answer.strip()) < 8 and "无法回答" not in full_answer:
         need_retry = True
         retry_hint = "请展开详细回答，不要过于简短。"
-    elif "无法回答" in full_answer or "没有找到" in full_answer:
-        keywords = re.findall(r"[一-鿿]{2,}", question)
-        if keywords and not any(kw in full_answer for kw in keywords[:3]):
-            need_retry = True
-            retry_hint = f"请围绕「{question}」回答，参考内容中应有相关信息。"
 
     if need_retry:
         retry_messages = [system_msg]

@@ -28,6 +28,7 @@ REACT_DIST = STATIC_DIR / "dist"
 # ── 错误日志 ──────────────────────────────────────────
 LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
+_log_lock = threading.Lock()
 
 
 def log_error(msg: str):
@@ -35,8 +36,9 @@ def log_error(msg: str):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_file = LOG_DIR / f"error-{datetime.date.today().isoformat()}.log"
     try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
+        with _log_lock:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"[{ts}] {msg}\n")
     except Exception:
         pass
 
@@ -61,6 +63,12 @@ def _check_rate(client_ip: str) -> bool:
             return False
         times.append(now)
         _request_counts[client_ip] = times
+        # 超过 5000 个 IP 时清理过期条目（最后活跃 >60s 前）
+        if len(_request_counts) > 5000:
+            stale = [ip for ip, ts in _request_counts.items()
+                     if not ts or (isinstance(ts, list) and ts and ts[-1] < now - 60)]
+            for ip in stale:
+                del _request_counts[ip]
         return True
 
 
@@ -106,9 +114,9 @@ async def api_get_config():
 
 
 @app.post("/api/config")
-async def api_update_config(data: dict):
+def api_update_config(data: dict):
     changed = False
-    for key in ("min_similarity", "top_k", "enable_query_rewrite"):
+    for key in ("min_similarity", "top_k", "enable_query_rewrite", "enable_rerank"):
         if key in data:
             _runtime_overrides[key] = data[key]
             changed = True
@@ -138,7 +146,7 @@ async def api_list_docs(page: int = 1, page_size: int = 50):
 
 
 @app.delete("/api/docs")
-async def api_delete_doc(data: dict):
+def api_delete_doc(data: dict):
     path = data.get("path", "").strip()
     if not path:
         raise HTTPException(400, "缺少 path 参数")
@@ -184,7 +192,7 @@ async def api_list_chunks(source: str | None = None, page: int = 1, page_size: i
 
 
 @app.put("/api/chunks")
-async def api_update_chunk(data: dict):
+def api_update_chunk(data: dict):
     chunk_id = data.get("id")
     text = data.get("text", "")
     if not chunk_id:
@@ -198,7 +206,7 @@ async def api_update_chunk(data: dict):
 
 
 @app.delete("/api/chunks")
-async def api_delete_chunks(data: dict):
+def api_delete_chunks(data: dict):
     chunk_id = data.get("id")
     chunk_ids = data.get("ids")
     try:
@@ -216,7 +224,7 @@ async def api_delete_chunks(data: dict):
 
 
 @app.post("/api/chunks/split")
-async def api_split_chunk(data: dict):
+def api_split_chunk(data: dict):
     chunk_id = data.get("id")
     separator = data.get("separator", "")
     if not chunk_id or not separator:
@@ -230,7 +238,7 @@ async def api_split_chunk(data: dict):
 
 
 @app.post("/api/chunks/merge")
-async def api_merge_chunks(data: dict):
+def api_merge_chunks(data: dict):
     chunk_ids = data.get("ids", [])
     if len(chunk_ids) < 2:
         raise HTTPException(400, "至少选择两块")
@@ -313,7 +321,7 @@ def api_upload(file: UploadFile = File(...), request: Request | None = None):
 
 
 @app.post("/api/title")
-async def api_gen_title(data: dict):
+def api_gen_title(data: dict):
     question = data.get("question", "").strip()
     if not question:
         raise HTTPException(400, "问题不能为空")

@@ -62,6 +62,7 @@ class RetrievalConfig:
     chunk_overlap: int = 50
     rrf_k: int = 60
     enable_query_rewrite: bool = True
+    enable_rerank: bool = False
 
 
 _ROOT = Path(__file__).parent.parent  # 项目根目录
@@ -99,6 +100,7 @@ def load_config() -> tuple[LLMConfig, EmbedConfig, VisionConfig, RetrievalConfig
         chunk_max_tokens=int(os.getenv("CHUNK_MAX_TOKENS", RetrievalConfig.chunk_max_tokens)),
         top_k=int(os.getenv("TOP_K", RetrievalConfig.top_k)),
         enable_query_rewrite=os.getenv("ENABLE_QUERY_REWRITE", "1") not in ("0", "false", "False"),
+        enable_rerank=os.getenv("ENABLE_RERANK", "0") in ("1", "true", "True"),
     )
     storage = StorageConfig()
     server = ServerConfig(
@@ -119,6 +121,7 @@ def get_runtime_config() -> dict:
         "min_similarity": _runtime_overrides.get("min_similarity", RETRIEVAL_CFG.min_similarity),
         "top_k": _runtime_overrides.get("top_k", RETRIEVAL_CFG.top_k),
         "enable_query_rewrite": _runtime_overrides.get("enable_query_rewrite", RETRIEVAL_CFG.enable_query_rewrite),
+        "enable_rerank": _runtime_overrides.get("enable_rerank", RETRIEVAL_CFG.enable_rerank),
     }
 
 def apply_runtime_overrides():
@@ -129,3 +132,5 @@ def apply_runtime_overrides():
         RETRIEVAL_CFG.top_k = int(_runtime_overrides["top_k"])
     if "enable_query_rewrite" in _runtime_overrides:
         RETRIEVAL_CFG.enable_query_rewrite = _runtime_overrides["enable_query_rewrite"] in (True, "1", "true", "True")
+    if "enable_rerank" in _runtime_overrides:
+        RETRIEVAL_CFG.enable_rerank = _runtime_overrides["enable_rerank"] in (True, "1", "true", "True")

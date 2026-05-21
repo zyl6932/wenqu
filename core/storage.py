@@ -61,6 +61,17 @@ def get_db() -> sqlite3.Connection:
     return conn
 
 
+def close_db_pool():
+    """关闭所有数据库连接并清空连接池"""
+    with _pool_lock:
+        for conn in _pool.values():
+            try:
+                conn.close()
+            except Exception:
+                pass
+        _pool.clear()
+
+
 # ── 块 CRUD（与上层检索逻辑解耦）─────────────────────
 
 def count_chunks(source: str | None = None) -> int:
