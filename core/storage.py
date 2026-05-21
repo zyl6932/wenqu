@@ -5,6 +5,7 @@ import json
 import sqlite3
 import threading
 from pathlib import Path
+import numpy as np
 from .config import STORAGE_CFG
 
 _pool_lock = threading.Lock()
@@ -109,9 +110,10 @@ def load_chunks_except(sources: list[str]) -> list[tuple[int, str, str, str]]:
 
 def insert_chunk(source: str, text: str, embedding: list[float], level: int = 0, parent_id: int | None = None) -> int:
     db = get_db()
+    emb_blob = np.array(embedding, dtype=np.float32).tobytes()
     cur = db.execute(
         "INSERT INTO chunks (source, text, embedding, level, parent_id) VALUES (?, ?, ?, ?, ?)",
-        (source, text, json.dumps(embedding), level, parent_id),
+        (source, text, emb_blob, level, parent_id),
     )
     db.commit()
     return cur.lastrowid
@@ -135,9 +137,10 @@ def get_child_chunks(parent_id: int) -> list[tuple[int, str, str]]:
 
 def update_chunk_text(chunk_id: int, text: str, embedding: list[float]):
     db = get_db()
+    emb_blob = np.array(embedding, dtype=np.float32).tobytes()
     db.execute(
         "UPDATE chunks SET text = ?, embedding = ? WHERE id = ?",
-        (text, json.dumps(embedding), chunk_id),
+        (text, emb_blob, chunk_id),
     )
     db.commit()
 

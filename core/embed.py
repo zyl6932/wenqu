@@ -51,10 +51,13 @@ def embed_single(text: str) -> list[float]:
 
 
 def cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    na = sum(x * x for x in a) ** 0.5
-    nb = sum(x * x for x in b) ** 0.5
-    return dot / (na * nb) if na and nb else 0.0
+    import numpy as np
+    va = np.asarray(a, dtype=np.float32)
+    vb = np.asarray(b, dtype=np.float32)
+    dot = np.dot(va, vb)
+    na = np.linalg.norm(va)
+    nb = np.linalg.norm(vb)
+    return float(dot / (na * nb)) if na and nb else 0.0
 
 
 def clear_cache():

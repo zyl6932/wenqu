@@ -613,7 +613,7 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
             unique.append(t)
 
     sources = list(set(src for _, _, _, src in top))
-    _retrieval_cache[cache_key] = (unique, sources)
+    _cache_set(cache_key, (unique, sources))
     return unique, sources
 
 
