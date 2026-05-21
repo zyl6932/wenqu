@@ -62,9 +62,21 @@ body {
   display: flex;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  cursor: none;
 }
+body * { cursor: none !important; }
 ::selection { background: var(--vermilion); color: #fff; }
-#root { display: flex; flex: 1; overflow: hidden; }
+#root { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+#root::after {
+  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background: radial-gradient(300px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(192,57,43,0.18) 0%, transparent 80%);
+}
+:root[data-theme="dark"] #root::after {
+  background: radial-gradient(300px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(212,168,74,0.25) 0%, transparent 80%);
+}
 
 /* sidebar */
 .sidebar {

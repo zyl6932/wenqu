@@ -19,6 +19,16 @@ export default function App() {
   const { addToast } = useToast();
   const inputRef = useRef(null);
 
+  // 鼠标跟随光晕效果
+  useEffect(() => {
+    const onMove = (e) => {
+      document.documentElement.style.setProperty('--mouse-x', (e.clientX / window.innerWidth * 100) + '%');
+      document.documentElement.style.setProperty('--mouse-y', (e.clientY / window.innerHeight * 100) + '%');
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
   const closeAll = useCallback(() => {
     setDocPath(null);
     setChunkSource(null);
