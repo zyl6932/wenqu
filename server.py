@@ -2,6 +2,7 @@
 本地知识库 Web 服务器 — FastAPI + uvicorn
 启动: python server.py 或 uvicorn server:app --host 0.0.0.0 --port 8080
 """
+import asyncio
 import json
 import sys
 import time as _time
