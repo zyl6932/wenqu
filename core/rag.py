@@ -11,7 +11,7 @@ from .embed import embed_single, clear_cache
 from .storage import (
     count_chunks, count_sources, insert_chunk, update_chunk_text,
     delete_chunk_by_id, delete_chunks_by_ids, get_chunk_by_id,
-    source_exists, insert_source, delete_source, list_sources,
+    source_exists, source_needs_update, insert_source, delete_source, list_sources,
     save_feedback, load_all_chunks,
     get_db,
 )
@@ -166,7 +166,7 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
 # ── 导入文档 ───────────────────────────────────────
 from .parser import parse_file
 
-def import_docs(on_log=None):
+def import_docs(on_log=None, generate_summary: bool = False):
     _log = on_log or print
     STORAGE_CFG.docs_dir.mkdir(parents=True, exist_ok=True)
     files = []
@@ -180,11 +180,16 @@ def import_docs(on_log=None):
         _log(f">>> 请在 {STORAGE_CFG.docs_dir} 目录放入文档，然后重新运行")
         return
 
+    import os
     for fp in files:
         path = str(fp.resolve())
-        if source_exists(path):
-            _log(f"  跳过 (已导入): {fp.name}")
+        if source_exists(path) and not source_needs_update(path):
+            _log(f"  跳过 (无变更): {fp.name}")
             continue
+
+        if source_exists(path):
+            _log(f"  检测到变更，重新索引: {fp.name}")
+            delete_source(path)
 
         try:
             text = parse_file(str(fp))
@@ -210,15 +215,16 @@ def import_docs(on_log=None):
         overview = build_overview(text)
         if overview:
             unique.insert(0, {"text": overview, "level": 0, "heading": ""})
-        try:
-            summary = chat([
-                {"role": "system", "content": "你是一个文档摘要助手。用2-3句话概括文档核心内容，输出纯文本。"},
-                {"role": "user", "content": f"请为以下文档生成简短摘要（50字以内）：\n\n{text[:2000]}"},
-            ])
-            if summary and len(summary) > 10:
-                unique.insert(0, {"text": f"【文档摘要】{summary}", "level": 0, "heading": ""})
-        except Exception:
-            pass
+        if generate_summary:
+            try:
+                summary = chat([
+                    {"role": "system", "content": "你是一个文档摘要助手。用2-3句话概括文档核心内容，输出纯文本。"},
+                    {"role": "user", "content": f"请为以下文档生成简短摘要（50字以内）：\n\n{text[:2000]}"},
+                ])
+                if summary and len(summary) > 10:
+                    unique.insert(0, {"text": f"【文档摘要】{summary}", "level": 0, "heading": ""})
+            except Exception:
+                pass
 
         # 建立父子关系：最近的一级标题作为父节点
         texts = [c["text"] for c in unique]
@@ -233,7 +239,7 @@ def import_docs(on_log=None):
             cid = insert_chunk(path, c["text"], emb, level, pid)
             if level == 1 and heading:
                 parent_ids[heading] = cid
-        insert_source(path)
+        insert_source(path, os.path.getmtime(path))
         _log("完成")
 
 

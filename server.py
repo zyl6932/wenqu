@@ -150,6 +150,16 @@ async def api_delete_doc(data: dict):
         raise HTTPException(500, str(e))
 
 
+@app.post("/api/docs/reindex")
+async def api_reindex():
+    log_lines = []
+    import_docs(on_log=log_lines.append)
+    from core.retrieve import clear_cache
+    clear_cache()
+    return {"message": "
+".join(log_lines) or "重新索引完成"}
+
+
 @app.get("/api/docs/content")
 async def api_doc_content(path: str = ""):
     if not path:

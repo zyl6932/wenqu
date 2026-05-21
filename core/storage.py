@@ -29,9 +29,13 @@ def _init_conn(conn: sqlite3.Connection):
     for col, typ in [("level", "INTEGER DEFAULT 0"), ("parent_id", "INTEGER DEFAULT NULL")]:
         try: conn.execute(f"ALTER TABLE chunks ADD COLUMN {col} {typ}")
         except: pass
+    for col, typ in [("file_mtime", "REAL DEFAULT 0")]:
+        try: conn.execute(f"ALTER TABLE sources ADD COLUMN {col} {typ}")
+        except: pass
     conn.execute("""CREATE TABLE IF NOT EXISTS sources (
         path TEXT PRIMARY KEY,
-        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        file_mtime REAL DEFAULT 0
     )""")
     conn.execute("""CREATE TABLE IF NOT EXISTS feedback (
         id INTEGER PRIMARY KEY,
@@ -180,9 +184,29 @@ def source_exists(path: str) -> bool:
     return get_db().execute("SELECT 1 FROM sources WHERE path = ?", (path,)).fetchone() is not None
 
 
-def insert_source(path: str):
+def source_needs_update(path: str) -> bool:
+    """检查文件的 mtime 是否已变更（需要重新索引）"""
+    import os
+    fp = Path(path)
+    if not fp.exists():
+        return False
+    current_mtime = os.path.getmtime(str(fp))
+    row = get_db().execute("SELECT file_mtime FROM sources WHERE path = ?", (path,)).fetchone()
+    if not row:
+        return True
+    return abs(row[0] - current_mtime) > 1.0  # 1 秒容忍度
+
+
+def insert_source(path: str, mtime: float | None = None):
+    import os
+    if mtime is None:
+        fp = Path(path)
+        if fp.exists():
+            mtime = os.path.getmtime(str(fp))
+        else:
+            mtime = 0.0
     db = get_db()
-    db.execute("INSERT INTO sources (path) VALUES (?)", (path,))
+    db.execute("INSERT INTO sources (path, file_mtime) VALUES (?, ?)", (path, mtime))
     db.commit()
 
 
