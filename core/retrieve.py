@@ -40,7 +40,7 @@ from pathlib import Path
 import numpy as np
 
 from .config import RETRIEVAL_CFG
-from .embed import embed_single
+from .embed import embed_single, cosine
 from .llm import chat
 from .chunker import estimate_tokens, TOKEN_RE
 from .storage import (
