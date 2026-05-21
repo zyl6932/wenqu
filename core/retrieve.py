@@ -35,6 +35,7 @@
 """
 import json
 import re
+import threading
 from collections import Counter
 from pathlib import Path
 import numpy as np
@@ -52,23 +53,27 @@ from collections import OrderedDict
 
 _RETRIEVAL_CACHE_MAX = 1000
 _retrieval_cache: OrderedDict[str, tuple[list[str], list[str]] | None] = OrderedDict()
+_cache_lock = threading.Lock()
+_MISS = object()
 
 
 def _cache_get(key: str):
-    """LRU 读取：命中时移到末尾（最近使用）"""
-    if key in _retrieval_cache:
-        _retrieval_cache.move_to_end(key)
-        return _retrieval_cache[key]
-    return None
+    """LRU 读取：命中时移到末尾（最近使用）。返回 _MISS 表示未命中。"""
+    with _cache_lock:
+        if key in _retrieval_cache:
+            _retrieval_cache.move_to_end(key)
+            return _retrieval_cache[key]
+        return _MISS
 
 
 def _cache_set(key: str, value):
     """LRU 写入：超出上限时淘汰最久未使用的"""
-    if key in _retrieval_cache:
-        _retrieval_cache.move_to_end(key)
-    _retrieval_cache[key] = value
-    while len(_retrieval_cache) > _RETRIEVAL_CACHE_MAX:
-        _retrieval_cache.popitem(last=False)
+    with _cache_lock:
+        if key in _retrieval_cache:
+            _retrieval_cache.move_to_end(key)
+        _retrieval_cache[key] = value
+        while len(_retrieval_cache) > _RETRIEVAL_CACHE_MAX:
+            _retrieval_cache.popitem(last=False)
 
 
 # ═══════════════════════════════════════════════════════
@@ -492,7 +497,7 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
 
     # 缓存命中：同一问题 + 同参数直接返回上次结果
     cached = _cache_get(cache_key)
-    if cached is not None or cache_key in _retrieval_cache:
+    if cached is not _MISS:
         return cached
 
     # 知识库为空
@@ -607,7 +612,8 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
 
 def clear_cache():
     """清空检索缓存、BM25 索引和向量存储"""
-    _retrieval_cache.clear()
+    with _cache_lock:
+        _retrieval_cache.clear()
     _bm25.invalidate()
     from .vector_store import rebuild_vector_store
     rebuild_vector_store()
