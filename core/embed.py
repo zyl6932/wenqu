@@ -9,6 +9,7 @@ from .config import EMBED_CFG
 
 _embed_cache: dict[str, list[float]] = {}
 _cache_lock = threading.Lock()
+_embed_semaphore = threading.BoundedSemaphore(5)
 
 
 def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
@@ -34,13 +35,16 @@ def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
             data = json.dumps({"model": EMBED_CFG.model, "input": batch}).encode()
             req = urllib.request.Request(f"{EMBED_CFG.ollama_url}/api/embed", data=data)
             req.add_header("Content-Type", "application/json")
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read())
+            _embed_semaphore.acquire()
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    result = json.loads(resp.read())
+            finally:
+                _embed_semaphore.release()
             new_embs.extend(result["embeddings"])
         with _cache_lock:
-            for idx, emb in zip(uncached_idx, new_embs):
+            for idx, ut, emb in zip(uncached_idx, uncached_texts, new_embs):
                 results[idx] = emb
-                ut = uncached_texts[uncached_idx.index(idx)]
                 _embed_cache[hashlib.sha256(ut.encode()).hexdigest()] = emb
 
     return results  # type: ignore
