@@ -47,10 +47,10 @@ export default function MessageContent({ role, content, thinkingContent, isStrea
 
   return (
     <div ref={ref} className={cls}>
-      <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginBottom: 4, cursor: 'pointer' }} onClick={() => setThinkOpen(v => !v)}>
+      <div style={{ color: 'var(--ink-mute)', marginBottom: 4, cursor: 'pointer' }} onClick={() => setThinkOpen(v => !v)}>
         <span className={done ? '' : 'think-dots'}>{headerText}</span> {thinkOpen ? '▾' : '▸'}
       </div>
-      {thinkOpen && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--ink-mute)', lineHeight: 1.6, marginBottom: 8 }}>{thinkingContent.replace(/^\s+/, '')}</div>}
+      {thinkOpen && <div style={{ whiteSpace: 'pre-wrap', color: 'var(--ink-mute)', lineHeight: 1.6, marginBottom: 8 }}>{thinkingContent.replace(/^\s+/, '')}</div>}
       {content && <div dangerouslySetInnerHTML={{ __html: html }} />}
     </div>
   );
