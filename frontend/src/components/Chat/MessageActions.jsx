@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { sendFeedback } from '../../api/client';
 
 export default function MessageActions({ question, contexts, onRegenerate, onDelete }) {
-  const [feedbackDone, setFeedbackDone] = useState(false);
+  const [feedback, setFeedback] = useState(null); // null | 'up' | 'down'
 
   async function handleFeedback(helpful) {
-    try {
-      await sendFeedback(question, contexts, helpful);
-    } catch {}
-    setFeedbackDone(true);
+    const type = helpful ? 'up' : 'down';
+    setFeedback(type);
+    try { await sendFeedback(question, contexts, helpful); } catch {}
   }
 
   function handleCopy(btn) {
@@ -20,12 +19,24 @@ export default function MessageActions({ question, contexts, onRegenerate, onDel
     }
   }
 
+  const done = feedback !== null;
+
   return (
     <div className="msg-actions">
       <button onClick={(e) => handleCopy(e.target)}>复制</button>
       <button onClick={onRegenerate}>重新生成</button>
-      <button onClick={() => !feedbackDone && handleFeedback(true)} className={feedbackDone ? 'done' : ''}>赞</button>
-      <button onClick={() => !feedbackDone && handleFeedback(false)} className={feedbackDone ? 'done' : ''}>踩</button>
+      <button
+        onClick={() => !done && handleFeedback(true)}
+        style={{ color: feedback === 'up' ? 'var(--gold)' : undefined, fontWeight: feedback === 'up' ? 700 : undefined }}
+      >
+        {feedback === 'up' ? '已赞' : '赞'}
+      </button>
+      <button
+        onClick={() => !done && handleFeedback(false)}
+        style={{ color: feedback === 'down' ? 'var(--vermilion)' : undefined }}
+      >
+        {feedback === 'down' ? '已踩' : '踩'}
+      </button>
       <button onClick={onDelete} style={{ marginLeft: 6 }}>删除</button>
     </div>
   );
