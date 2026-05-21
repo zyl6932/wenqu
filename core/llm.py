@@ -83,8 +83,8 @@ def _chat(messages: list[dict], temperature: float | None = None, provider: str 
 
 def chat_stream(messages: list[dict], provider: str | None = None):
     """流式调用 LLM。yield ("token", text) 或 ("think", text)。"""
-    _llm_semaphore.acquire()
     try:
+        _llm_semaphore.acquire()
         yield from _chat_stream(messages, provider)
     finally:
         _llm_semaphore.release()
