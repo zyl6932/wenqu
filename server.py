@@ -243,7 +243,7 @@ async def api_merge_chunks(data: dict):
 
 
 @app.post("/api/ask")
-async def api_ask(data: dict):
+def api_ask(data: dict):
     question = data.get("question", "").strip()
     if not question:
         raise HTTPException(400, "问题不能为空")
@@ -260,7 +260,7 @@ async def api_ask(data: dict):
 
 
 @app.post("/api/ask/stream")
-async def api_ask_stream(data: dict):
+def api_ask_stream(data: dict):
     question = data.get("question", "").strip()
     if not question:
         raise HTTPException(400, "问题不能为空")
