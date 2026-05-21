@@ -18,6 +18,7 @@
 - **UI 细节**：聊天区/输入框边距大幅缩进（20→144px），文档列表加滚动条，导入按钮不受裁剪
 - **字号修复**：`.message-content` 改用 CSS 变量 `var(--font-size)`，字体缩放生效
 - **标题栏对齐**：侧边栏收起时标题自动右移避开展开按钮，收起/展开时动态 padding
+- **LLM 调用削减**：每问从 3-4 次降到 1-2 次——`rerank` 默认关闭（`ENABLE_RERANK=1` 打开），质量重试阈值从 15 字降至 8 字且不再在"无法回答"时重试浪费 token
 - **LLM 兼容**：`reasoning_content` 空值不阻塞普通 token，新增 `deepseek-v4-flash` 模型支持
 - **检索性能**：BM25 索引缓存、embedding 二进制存储、numpy 向量计算（Phase 1+2）
 - **高并发安全加固**：VectorStore COW 原子替换锁、BM25 索引 RLock、检索缓存 OrderedDict 加锁（_MISS 哨兵）、嵌入 BoundedSemaphore(5)、vector_store 单例双检锁，消除多线程数据竞争
