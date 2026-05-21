@@ -61,7 +61,7 @@ class RetrievalConfig:
     chunk_max_tokens: int = 400
     chunk_overlap: int = 50
     rrf_k: int = 60
-    enable_query_rewrite: bool = True
+    enable_query_rewrite: bool = False
     enable_rerank: bool = False
 
 
@@ -99,7 +99,7 @@ def load_config() -> tuple[LLMConfig, EmbedConfig, VisionConfig, RetrievalConfig
     retrieval = RetrievalConfig(
         chunk_max_tokens=int(os.getenv("CHUNK_MAX_TOKENS", RetrievalConfig.chunk_max_tokens)),
         top_k=int(os.getenv("TOP_K", RetrievalConfig.top_k)),
-        enable_query_rewrite=os.getenv("ENABLE_QUERY_REWRITE", "1") not in ("0", "false", "False"),
+        enable_query_rewrite=os.getenv("ENABLE_QUERY_REWRITE", "0") not in ("0", "false", "False"),
         enable_rerank=os.getenv("ENABLE_RERANK", "0") in ("1", "true", "True"),
     )
     storage = StorageConfig()
