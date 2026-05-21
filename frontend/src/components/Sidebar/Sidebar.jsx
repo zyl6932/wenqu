@@ -3,7 +3,8 @@ import { useConversation } from '../../context/ConversationContext';
 import SidebarHeader from './SidebarHeader';
 import SearchPanel from './SearchPanel';
 import ConversationList from './ConversationList';
-import SettingsPanel from './SettingsPanel';
+import SettingsModal from './SettingsModal';
+import DocSection from './DocSection';
 
 export default function Sidebar({ onOpenChunks, collapsed, onToggleCollapse }) {
   const [searchVisible, setSearchVisible] = useState(false);
@@ -51,7 +52,7 @@ export default function Sidebar({ onOpenChunks, collapsed, onToggleCollapse }) {
         <div style={{ borderTop: '1px solid var(--border)' }}>
           <button
             className="sidebar-btn"
-            onClick={() => setSettingsVisible(v => !v)}
+            onClick={() => setSettingsVisible(true)}
             style={{ width: '100%', border: 'none', borderRadius: 0, padding: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-start', fontFamily: 'var(--serif)' }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -59,7 +60,8 @@ export default function Sidebar({ onOpenChunks, collapsed, onToggleCollapse }) {
             </svg>
             设置
           </button>
-          <SettingsPanel visible={settingsVisible} onOpenChunks={onOpenChunks} />
+          <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+          <DocSection onOpenChunks={onOpenChunks} />
         </div>
       </aside>
     </>
