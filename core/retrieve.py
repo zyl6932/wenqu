@@ -174,10 +174,7 @@ class _BM25Index:
         with self._lock:
             if not self._built:
                 self.build()
-            docs = self.docs
-            df = self.df
-            n = self.n
-            avgdl = self.avgdl
+            docs, df, n, avgdl = self.docs, self.df, self.n, self.avgdl
         q_tokens = _tokenize(query)
         if not q_tokens or not docs:
             return []

@@ -69,7 +69,7 @@ export default function App() {
           setSidebarCollapsed(false);
         }}
         style={{
-          display: 'none',
+          display: sidebarCollapsed ? 'flex' : 'none',
           position: 'fixed', left: 8, top: 15, zIndex: 60,
           width: 32, height: 32, border: '1px solid var(--border)',
           borderRadius: 8, background: 'var(--surface)',
