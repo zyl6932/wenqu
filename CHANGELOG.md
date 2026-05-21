@@ -20,6 +20,9 @@
 - **标题栏对齐**：侧边栏收起时标题自动右移避开展开按钮，收起/展开时动态 padding
 - **LLM 兼容**：`reasoning_content` 空值不阻塞普通 token，新增 `deepseek-v4-flash` 模型支持
 - **检索性能**：BM25 索引缓存、embedding 二进制存储、numpy 向量计算（Phase 1+2）
+- **高并发安全加固**：VectorStore COW 原子替换锁、BM25 索引 RLock、检索缓存 OrderedDict 加锁（_MISS 哨兵）、嵌入 BoundedSemaphore(5)、vector_store 单例双检锁，消除多线程数据竞争
+- **非流式端点线程池化**：`api_ask`/`api_upload`/`api_reindex`/`api_import`/`api_v1_embeddings` 从 `async def` 改为 `def`，FastAPI 自动放线程池，同步 I/O 不再阻塞 event loop
+- **上传安全**：`api_upload` 加 Content-Length 检查，超过 100MB 返回 413
 - **HTTP 层升级**：`http.server` → FastAPI + uvicorn（SSE 改用 StreamingResponse，CORS 中间件，客户端断连检测，减少 ~200 行）
 - **文档增量索引**：sources 表记录文件 mtime，`import_docs()` 自动检测变更并重新索引，不再需要手动删了再导
 - **LLM 摘要可选**：导入时 LLM 摘要生成默认关闭（`generate_summary=False`），不再拖慢导入
