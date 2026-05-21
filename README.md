@@ -293,7 +293,7 @@ Set via environment variables or `.env` file:
 | `LLM_PROVIDER` | `deepseek` | LLM backend: `deepseek` (requires key) or `ollama` (offline) |
 | `DEEPSEEK_KEY` | — | DeepSeek API key (not needed in ollama mode) |
 | `DEEPSEEK_BASE` | `https://api.deepseek.com/v1` | DeepSeek API base URL |
-| `DEEPSEEK_MODEL` | `deepseek-chat` | Chat model (set to e.g. `qwen2.5` for ollama mode) |
+| `DEEPSEEK_MODEL` | `deepseek-chat` | Chat model: `deepseek-chat` / `deepseek-v4-flash` / `deepseek-reasoner` |
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
 | `EMBED_MODEL` | `bge-m3` | Embedding model |
 | `VISION_MODEL` | `minicpm-v:8b` | Vision model for image extraction |

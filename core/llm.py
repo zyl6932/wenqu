@@ -130,9 +130,11 @@ def _chat_stream(messages: list[dict]):
         try:
             chunk = json.loads(data)
             delta = chunk["choices"][0].get("delta", {})
-            if "reasoning_content" in delta:
-                yield ("think", delta["reasoning_content"])
-            elif "content" in delta:
+            # 新模型可能不含 reasoning_content 或值为空
+            rc = delta.get("reasoning_content")
+            if rc:
+                yield ("think", rc)
+            if "content" in delta and delta["content"]:
                 yield ("token", delta["content"])
         except (json.JSONDecodeError, KeyError, IndexError):
             continue
