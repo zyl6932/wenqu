@@ -188,26 +188,32 @@ def serialize_embedding(embedding: list[float]) -> bytes:
 
 
 _vector_store: VectorStore | None = None
+_vs_lock = threading.Lock()
 
 
 def get_vector_store() -> VectorStore:
     global _vector_store
     if _vector_store is None:
-        _vector_store = VectorStore()
-        if not _vector_store.load_disk():
-            _vector_store.build()
-            _vector_store.save()
+        with _vs_lock:
+            if _vector_store is None:
+                vs = VectorStore()
+                if not vs.load_disk():
+                    vs.build()
+                    vs.save()
+                _vector_store = vs
     return _vector_store
 
 
 def rebuild_vector_store():
     global _vector_store
-    if _vector_store is None:
-        _vector_store = VectorStore()
-    _vector_store.build()
-    _vector_store.save()
+    with _vs_lock:
+        if _vector_store is None:
+            _vector_store = VectorStore()
+        _vector_store.build()
+        _vector_store.save()
 
 
 def clear_vector_store():
     global _vector_store
-    _vector_store = None
+    with _vs_lock:
+        _vector_store = None
