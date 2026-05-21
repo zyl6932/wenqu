@@ -156,8 +156,7 @@ async def api_reindex():
     import_docs(on_log=log_lines.append)
     from core.retrieve import clear_cache
     clear_cache()
-    return {"message": "
-".join(log_lines) or "重新索引完成"}
+    return {"message": "\n".join(log_lines) or "重新索引完成"}
 
 
 @app.get("/api/docs/content")
