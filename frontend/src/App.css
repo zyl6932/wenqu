@@ -188,8 +188,7 @@ body * { cursor: none !important; }
 .message.ai { align-self:flex-start; }
 .message-content { padding:10px 16px; border-radius:var(--radius); font-size:var(--font-size, 14px); line-height:1.7; word-break:break-word; }
 .mc-user {
-  background:var(--gold); color:#fff;
-  border-bottom-right-radius:2px;
+  background:transparent; color:var(--ink);
 }
 .mc-ai { background:transparent; border:none; padding:0; line-height:1.5; }
 

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "katex": "^0.16.47",
     "marked": "^12.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
