@@ -8,8 +8,7 @@ from pathlib import Path
 import numpy as np
 from .config import STORAGE_CFG
 
-_pool_lock = threading.Lock()
-_pool: dict[int, sqlite3.Connection] = {}
+_thread_local = threading.local()
 
 
 def _init_conn(conn: sqlite3.Connection):
@@ -49,15 +48,13 @@ def _init_conn(conn: sqlite3.Connection):
 
 
 def get_db() -> sqlite3.Connection:
-    """线程安全的数据库连接（WAL 模式，连接复用）"""
-    tid = threading.get_ident()
-    with _pool_lock:
-        conn = _pool.get(tid)
-        if conn is None:
-            STORAGE_CFG.data_dir.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(str(STORAGE_CFG.data_dir / "vectors.db"), check_same_thread=False)
-            _init_conn(conn)
-            _pool[tid] = conn
+    """线程局部的数据库连接（WAL 模式，连接复用）"""
+    conn = getattr(_thread_local, 'conn', None)
+    if conn is None:
+        STORAGE_CFG.data_dir.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(STORAGE_CFG.data_dir / "vectors.db"), check_same_thread=False)
+        _init_conn(conn)
+        _thread_local.conn = conn
     return conn
 
 

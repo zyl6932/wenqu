@@ -5,9 +5,11 @@ import hashlib
 import json
 import threading
 import urllib.request
+from collections import OrderedDict
 from .config import EMBED_CFG
 
-_embed_cache: dict[str, list[float]] = {}
+_EMBED_CACHE_MAX = 50000
+_embed_cache: OrderedDict[str, list[float]] = OrderedDict()
 _cache_lock = threading.Lock()
 _embed_semaphore = threading.BoundedSemaphore(5)
 
@@ -46,6 +48,8 @@ def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
             for idx, ut, emb in zip(uncached_idx, uncached_texts, new_embs):
                 results[idx] = emb
                 _embed_cache[hashlib.sha256(ut.encode()).hexdigest()] = emb
+            while len(_embed_cache) > _EMBED_CACHE_MAX:
+                _embed_cache.popitem(last=False)
 
     return results  # type: ignore
 

@@ -2,12 +2,15 @@
 API 路由 — 全部 FastAPI 端点
 通过 register_routes(app) 注册
 """
+import asyncio
 import json
 import time as _time
 import mimetypes
+import threading
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor as _TPE
 
-from fastapi import Request, UploadFile, File, HTTPException
+from fastapi import Request, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, Response
 
 from .rag import (
@@ -26,11 +29,15 @@ REACT_DIST = STATIC_DIR / "dist"
 
 
 def register_routes(app):
-    # ── 限流中间件 ──────────────────────────────────
+    # ── 限流中间件（线程池运行，避免阻塞事件循环）────
+    _rate_executor = _TPE(max_workers=4, thread_name_prefix="rate")
+
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):
         client_ip = request.client.host if request.client else "unknown"
-        if not check_rate(client_ip):
+        loop = asyncio.get_running_loop()
+        ok = await loop.run_in_executor(_rate_executor, check_rate, client_ip)
+        if not ok:
             return JSONResponse({"error": "请求过于频繁"}, status_code=429)
         return await call_next(request)
 
@@ -200,12 +207,37 @@ def register_routes(app):
             history = None
 
         async def sse_generate():
+            loop = asyncio.get_running_loop()
+            queue = asyncio.Queue(maxsize=64)
+            cancelled = threading.Event()
+
+            def produce():
+                try:
+                    for event_type, payload in ask_stream(question, history=history, llm_provider=llm_provider):
+                        if cancelled.is_set():
+                            return
+                        loop.call_soon_threadsafe(queue.put_nowait, (event_type, payload))
+                except Exception as e:
+                    if not cancelled.is_set():
+                        loop.call_soon_threadsafe(queue.put_nowait, ('error', str(e)))
+                if not cancelled.is_set():
+                    loop.call_soon_threadsafe(queue.put_nowait, None)
+
+            future = loop.run_in_executor(None, produce)
             try:
-                for event_type, payload in ask_stream(question, history=history, llm_provider=llm_provider):
+                while True:
+                    item = await queue.get()
+                    if item is None:
+                        break
+                    event_type, payload = item
                     line = json.dumps({event_type: payload}, ensure_ascii=False)
                     yield f"data: {line}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+            finally:
+                cancelled.set()
+                try:
+                    await asyncio.wait_for(future, timeout=5)
+                except (asyncio.TimeoutError, Exception):
+                    pass
 
         return StreamingResponse(sse_generate(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "Connection": "close"})
@@ -218,7 +250,7 @@ def register_routes(app):
         return {"message": "\n".join(log_lines) or "导入完成"}
 
     @app.post("/api/upload")
-    def api_upload(file: UploadFile = File(...), request=None):
+    def api_upload(file: UploadFile = File(...), request=None, background_tasks=None):
         if not file.filename:
             raise HTTPException(400, "无文件")
         if request:
@@ -228,13 +260,16 @@ def register_routes(app):
         docs_dir = Path(__file__).parent.parent / "docs"
         docs_dir.mkdir(exist_ok=True)
         save_path = docs_dir / Path(file.filename).name
-        content = file.file.read()
         with open(save_path, 'wb') as f:
-            f.write(content)
-        import_docs()
-        from .retrieve import clear_cache
-        clear_cache()
-        return {"message": f"已上传并导入 {file.filename}"}
+            while chunk := file.file.read(1 << 20):
+                f.write(chunk)
+        if background_tasks:
+            background_tasks.add_task(_import_bg)
+        else:
+            import_docs()
+            from .retrieve import clear_cache
+            clear_cache()
+        return {"message": f"已上传 {file.filename}，后台导入中", "status": "importing"}
 
     # ── 标题 / 反馈 ────────────────────────────────
     @app.post("/api/title")
@@ -305,9 +340,31 @@ def register_routes(app):
 
         if data.get("stream"):
             async def sse_chat():
+                loop = asyncio.get_running_loop()
+                queue = asyncio.Queue(maxsize=64)
+                cancelled = threading.Event()
+
+                def produce():
+                    try:
+                        from .llm import chat_stream
+                        for kind, text in chat_stream(llm_messages):
+                            if cancelled.is_set():
+                                return
+                            loop.call_soon_threadsafe(queue.put_nowait, (kind, text))
+                    except Exception:
+                        pass
+                    if not cancelled.is_set():
+                        loop.call_soon_threadsafe(queue.put_nowait, None)
+
+                future = loop.run_in_executor(None, produce)
                 try:
-                    from .llm import chat_stream
-                    for kind, text in chat_stream(llm_messages):
+                    while True:
+                        item = await queue.get()
+                        if item is None:
+                            break
+                        kind, text = item
+                        if kind == "usage":
+                            continue
                         if kind == "think":
                             chunk = json.dumps({"id": request_id, "object": "chat.completion.chunk",
                                                 "created": int(_time.time()), "model": "wenqu-v1",
@@ -323,8 +380,12 @@ def register_routes(app):
                                         "created": int(_time.time()), "model": "wenqu-v1",
                                         "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
                     yield f"data: {chunk}\n\ndata: [DONE]\n\n"
-                except Exception:
-                    yield "data: [DONE]\n\n"
+                finally:
+                    cancelled.set()
+                    try:
+                        await asyncio.wait_for(future, timeout=5)
+                    except (asyncio.TimeoutError, Exception):
+                        pass
             return StreamingResponse(sse_chat(), media_type="text/event-stream",
                                      headers={"Cache-Control": "no-cache"})
 
@@ -366,3 +427,13 @@ def register_routes(app):
             ct = mimetypes.guess_type(str(fp))[0] or "application/octet-stream"
             return Response(fp.read_bytes(), media_type=ct)
         return FileResponse(STATIC_DIR / "index.html")
+
+
+def _import_bg():
+    """后台导入任务"""
+    try:
+        import_docs()
+        from .retrieve import clear_cache
+        clear_cache()
+    except Exception:
+        pass
