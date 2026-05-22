@@ -187,7 +187,7 @@ body * { cursor: none !important; }
 .message.user { align-self:flex-end; }
 .message.ai { align-self:flex-start; }
 .message-content { padding:10px 16px; border-radius:var(--radius); font-size:var(--font-size, 14px); line-height:1.7; word-break:break-word; }
-.mc-user { background:transparent; color:var(--ink); padding:0; }
+.mc-user { background:transparent; color:var(--ink); padding:0; text-align:right; }
 .mc-ai { background:transparent; color:var(--ink); padding:0; }
 
 .msg-time { font-size:11px; color:var(--ink-mute); margin-top:2px; }
