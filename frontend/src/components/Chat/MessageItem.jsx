@@ -19,11 +19,11 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, 
     return (
       <div className="message user">
         <MessageContent role="user" content={msg.content} />
+        {ts && <div className="msg-time user">{ts}</div>}
         <div className="msg-actions" style={{ justifyContent: 'flex-end', marginTop: 2 }}>
           <button onClick={(e) => copyUserMsg(e.target)} style={{ fontSize: 11, color: 'var(--ink-mute)', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--serif)' }}>复制</button>
           <button onClick={onDelete} style={{ fontSize: 11, color: 'var(--ink-mute)', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--serif)' }}>删除</button>
         </div>
-        {ts && <div className="msg-time user">{ts}</div>}
       </div>
     );
   }
