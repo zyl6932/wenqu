@@ -200,7 +200,7 @@ body * { cursor: none !important; }
   display:inline-block; background:var(--primary-light); border:none; border-radius:10px;
   padding:2px 10px; font-size:11px; color:var(--vermilion); font-weight:500;
 }
-.msg-actions { display:flex; gap:12px; margin-top:4px; padding:0 4px; opacity:0; transition:opacity .15s; }
+.msg-actions { display:flex; gap:12px; margin-top:4px; padding:0; opacity:0; transition:opacity .15s; }
 .message:hover .msg-actions { opacity:1; }
 .msg-actions button, .msg-feedback button {
   padding:0; border:none; background:transparent; color:var(--ink-mute); font-size:12px;
