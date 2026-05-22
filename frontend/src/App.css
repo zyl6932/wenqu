@@ -187,10 +187,8 @@ body * { cursor: none !important; }
 .message.user { align-self:flex-end; }
 .message.ai { align-self:flex-start; }
 .message-content { padding:10px 16px; border-radius:var(--radius); font-size:var(--font-size, 14px); line-height:1.7; word-break:break-word; }
-.mc-user {
-  background:transparent; color:var(--ink);
-}
-.mc-ai { background:transparent; border:none; padding:0; line-height:1.5; }
+.mc-user { background:transparent; color:var(--ink); padding:0; }
+.mc-ai { background:transparent; color:var(--ink); padding:0; }
 
 .msg-time { font-size:11px; color:var(--ink-mute); margin-top:2px; }
 .msg-time.user { text-align:right; }
