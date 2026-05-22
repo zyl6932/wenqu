@@ -12,12 +12,17 @@ export default function ChatArea({ sidebarCollapsed }) {
   const [elapsed, setElapsed] = useState(null);
   const [fillValue, setFillValue] = useState({ text: null, key: 0 });
   const [atBottom, setAtBottom] = useState(true);
+  const thinkCountRef = useRef(0);
+  const outCountRef = useRef(0);
   const stopRef = useRef(null);
   const msgListRef = useRef(null);
 
   const handleSend = useCallback((question) => {
     const prevMessages = getActiveConv()?.messages || [];
     addSearchHistory(question);
+
+    thinkCountRef.current = 0;
+    outCountRef.current = 0;
 
     const convBefore = getActiveConv();
 
@@ -45,15 +50,24 @@ export default function ChatArea({ sidebarCollapsed }) {
       question,
       history.length > 1 ? history.slice(0, -1) : null,
       null,
-      (token) => dispatch({ type: 'APPEND_TOKEN', token }),
-      (think) => dispatch({ type: 'APPEND_THINK', token: think }),
+      (token) => { outCountRef.current++; dispatch({ type: 'APPEND_TOKEN', token }); },
+      (think) => { thinkCountRef.current++; dispatch({ type: 'APPEND_THINK', token: think }); },
       (sources) => dispatch({ type: 'SET_SOURCES', sources }),
-      (thinking) => dispatch({ type: 'APPEND_THINK', token: thinking + '\n' }),
+      (thinking) => {
+        thinkCountRef.current += Math.round(thinking.length * 0.6);
+        dispatch({ type: 'APPEND_THINK', token: thinking + '\n' });
+      },
       (elapsedStr, aborted) => {
         setIsStreaming(false);
         stopRef.current = null;
-        dispatch({ type: 'FINISH_AI_MSG', elapsed: aborted ? null : elapsedStr });
-        if (!aborted) setElapsed(elapsedStr);
+        if (!aborted) {
+          setElapsed(elapsedStr);
+          dispatch({ type: 'FINISH_AI_MSG', elapsed: elapsedStr,
+            thinkTokens: thinkCountRef.current,
+            outTokens: outCountRef.current });
+        } else {
+          dispatch({ type: 'FINISH_AI_MSG', elapsed: null, thinkTokens: null, outTokens: null });
+        }
       },
       (err) => {
         setIsStreaming(false);
