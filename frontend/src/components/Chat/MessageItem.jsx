@@ -33,7 +33,7 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, 
     <div className="message ai">
       <MessageContent role="ai" content={msg.content} thinkingContent={msg.thinkingContent} isStreaming={isStreaming} elapsed={isLastAI ? elapsed : null} msgElapsed={msg.elapsed} />
       {ts && !(isLastAI && isStreaming) && <div className="msg-time">{ts}</div>}
-      {hasContent && !isStreaming && <MessageSources sources={msg.sources} />}
+      {hasContent && msg.elapsed && <MessageSources sources={msg.sources} />}
       {(msg.elapsed || (isLastAI && elapsed)) && <ElapsedTime seconds={elapsed || msg.elapsed} thinkTokens={msg.thinkTokens} outTokens={msg.outTokens} />}
       {hasContent && (
         <MessageActions
