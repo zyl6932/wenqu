@@ -28,6 +28,7 @@ Thumbs.db
 # 文档目录 — 只提交文本文件，忽略所有二进制和临时文件
 docs/**/*.pdf
 docs/**/*.docx
+docs/**/*.ppt
 docs/**/*.pptx
 docs/**/*.png
 docs/**/*.jpg
