@@ -61,8 +61,11 @@ def expand_with_history(question: str, history: list[dict] | None) -> str:
     keywords = re.findall(r"[一-鿿]{2,}|[a-zA-Z]{2,}", recent_user)
     if not keywords:
         return question
-    if len(question) < 10:
-        return question + " " + " ".join(keywords[:5])
+    # 只有新问题和历史有关联时才扩展（共享关键词）
+    q_words = set(re.findall(r"[一-鿿]{2,}|[a-zA-Z]{2,}", question))
+    related = q_words & set(keywords)
+    if related and len(question) < 10:
+        return question + " " + " ".join(related)
     return question
 
 
