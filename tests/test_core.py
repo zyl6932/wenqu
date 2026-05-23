@@ -420,15 +420,18 @@ class LLMProviderTest(unittest.TestCase):
 
 
 class BM25Test(unittest.TestCase):
-    def test_bm25_build(self):
+    def test_bm25_like_search(self):
         from core.storage import count_chunks
         if count_chunks() == 0:
             self.skipTest("知识库为空")
-        from core.retrieve import _bm25
-        _bm25.invalidate()
-        _bm25.build()
-        self.assertTrue(_bm25._built)
-        self.assertGreater(_bm25.n, 0)
+        from core.retrieve import _bm25_like_search
+        results = _bm25_like_search("机器视觉", top_k=5)
+        self.assertIsInstance(results, list)
+
+    def test_bm25_like_search_empty(self):
+        from core.retrieve import _bm25_like_search
+        results = _bm25_like_search("", top_k=5)
+        self.assertEqual(results, [])
 
     def test_tokenize_chinese_bigram(self):
         from core.retrieve import _tokenize

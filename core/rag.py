@@ -20,6 +20,10 @@ from .retrieve import retrieve, clear_cache as clear_retrieval_cache, expand_que
 
 # ── 提示构建 ───────────────────────────────────────
 def build_prompt(contexts: list[str], question: str) -> str:
+    if not isinstance(contexts, list):
+        raise ValueError("contexts 必须是列表")
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError("question 不能为空")
     context = "\n\n---\n\n".join(contexts)
     return f"""你是一个知识库助手，你的职责是**仅根据以下参考内容**回答问题。
 
@@ -73,14 +77,12 @@ def expand_with_history(question: str, history: list[dict] | None) -> str:
 def ask_stream(question: str, top_k: int | None = None, history: list[dict] | None = None, llm_provider: str | None = None):
     think_steps = []
     source_names = []
-    prompt = question
 
-    enriched_q = expand_with_history(question, history)
     dynamic_k = _smart_top_k(question)
     tk = max(top_k or RETRIEVAL_CFG.top_k, dynamic_k)
     trace: dict = {}
     yield ("thinking", "正在检索相关知识…")
-    result = retrieve(enriched_q, top_k=tk, trace=trace)
+    result = retrieve(question, top_k=tk, trace=trace)
 
     if result is None:
         if count_sources() > 0:
@@ -187,7 +189,7 @@ def import_docs(on_log=None, generate_summary: bool = False):
 
         if source_exists(path):
             _log(f"  检测到变更，重新索引: {fp.name}")
-            delete_source(path)
+        delete_source(path)  # 无条件清理，消除上次崩溃可能留下的孤儿 chunk
 
         try:
             text = parse_file(str(fp))
@@ -238,6 +240,8 @@ def import_docs(on_log=None, generate_summary: bool = False):
             if level == 1 and heading:
                 parent_ids[heading] = cid
         insert_source(path, os.path.getmtime(path))
+        db = get_db()
+        db.execute("PRAGMA wal_checkpoint(PASSIVE)")
         _log("完成")
 
 
@@ -317,6 +321,8 @@ def merge_chunks(chunk_ids: list[int]) -> int:
 
 
 def record_feedback(question: str, contexts: list[str], helpful: bool):
+    if not isinstance(helpful, bool):
+        helpful = bool(helpful)
     score = 1 if helpful else -1
     for ctx in contexts[:5]:
         save_feedback(question, ctx[:80], score)

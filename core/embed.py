@@ -32,18 +32,25 @@ def embed(texts: list[str], batch_size: int | None = None) -> list[list[float]]:
 
     if uncached_texts:
         new_embs = []
-        for j in range(0, len(uncached_texts), bs):
-            batch = uncached_texts[j:j + bs]
-            data = json.dumps({"model": EMBED_CFG.model, "input": batch}).encode()
-            req = urllib.request.Request(f"{EMBED_CFG.ollama_url}/api/embed", data=data)
-            req.add_header("Content-Type", "application/json")
-            _embed_semaphore.acquire()
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-            finally:
-                _embed_semaphore.release()
-            new_embs.extend(result["embeddings"])
+        batch_idx = 0
+        try:
+            for batch_idx in range(0, len(uncached_texts), bs):
+                batch = uncached_texts[batch_idx:batch_idx + bs]
+                data = json.dumps({"model": EMBED_CFG.model, "input": batch}).encode()
+                req = urllib.request.Request(f"{EMBED_CFG.ollama_url}/api/embed", data=data)
+                req.add_header("Content-Type", "application/json")
+                _embed_semaphore.acquire()
+                try:
+                    with urllib.request.urlopen(req, timeout=120) as resp:
+                        result = json.loads(resp.read())
+                finally:
+                    _embed_semaphore.release()
+                batch_embs = result.get("embeddings", [])
+                if len(batch_embs) != len(batch):
+                    raise RuntimeError(f"嵌入返回数量不匹配: 期望 {len(batch)}, 实际 {len(batch_embs)}")
+                new_embs.extend(batch_embs)
+        except Exception as e:
+            raise RuntimeError(f"向量化失败 (batch {batch_idx // bs}): {e}") from e
         with _cache_lock:
             for idx, ut, emb in zip(uncached_idx, uncached_texts, new_embs):
                 results[idx] = emb

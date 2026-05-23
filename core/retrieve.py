@@ -45,8 +45,9 @@ from .embed import embed_single, cosine
 from .llm import chat
 from .chunker import estimate_tokens, TOKEN_RE
 from .storage import (
-    load_all_chunks, overview_sources, get_feedback_boost,
+    overview_sources, get_feedback_boost, get_db,
 )
+from .vector_store import get_vector_store
 from collections import OrderedDict
 
 _RETRIEVAL_CACHE_MAX = 1000
@@ -115,99 +116,50 @@ def _tokenize(text: str) -> list[str]:
     return tokens
 
 
-class _BM25Index:
-    """
-    BM25（Best Match 25）全文检索索引。
-
-    核心公式：Score(q, d) = Σ IDF(qi) × TF(qi, d) × (k1+1) / (TF(qi,d) + k1·(1-b + b·dl/avgdl))
-
-    参数（来自 RETRIEVAL_CFG）：
-      - bm25_k1=1.5：控制词频饱和，越大词频的影响越大
-      - bm25_b=0.75：控制文档长度惩罚，0 不惩罚、1 完全按长度惩罚
-      - 中长文档（教材、论文）应适当调低 b 值
-
-    索引构建：遍历所有 chunk，统计每个词的文档频率（DF）
-    搜索时：对查询分词，计算 IDF，逐个文档打分，返回 top_k
-    """
-
-    def __init__(self):
-        self.docs: list[tuple[int, str, str, list[str]]] = []
-        self.df: dict[str, int] = {}
-        self.avgdl: float = 0.0
-        self.n: int = 0
-        self._built = False
-        self._lock = threading.RLock()
-
-    def build(self):
-        """构建索引：加载所有 chunk，分词，统计 DF（COW 模式，原子替换）"""
-        rows = load_all_chunks()
-        docs: list = []
-        df: dict[str, int] = {}
-        total_len = 0
-        for chunk_id, source, text, _ in rows:
-            tokens = _tokenize(text)
-            docs.append((chunk_id, source, text, tokens))
-            total_len += len(tokens)
-            seen = set()
-            for t in tokens:
-                if t not in seen:
-                    df[t] = df.get(t, 0) + 1
-                    seen.add(t)
-        n = len(docs)
-        avgdl = total_len / n if n else 1
-        with self._lock:
-            self.docs = docs
-            self.df = df
-            self.n = n
-            self.avgdl = avgdl
-            self._built = True
-
-    def search(self, query: str, top_k: int = 10) -> list[tuple[float, int, str, str]]:
-        """
-        搜索并返回 [(score, chunk_id, text, source), ...]
-
-        IDF 公式：IDF(t) = max(0, ln((N - df + 0.5) / (df + 0.5)) + 1)
-        该公式确保：高频词（DF大）IDF 趋近 0，低频词 IDF 高
-        """
-        with self._lock:
-            if not self._built:
-                self.build()
-            docs, df, n, avgdl = self.docs, self.df, self.n, self.avgdl
-        q_tokens = _tokenize(query)
-        if not q_tokens or not docs:
-            return []
-        # 计算每个查询词的 IDF
-        idf = {t: max(0, (n - df.get(t, 0) + 0.5) / (df.get(t, 0) + 0.5) + 1)
-               for t in set(q_tokens)}
-        scored = []
-        for chunk_id, source, text, doc_tokens in docs:
-            if not doc_tokens:
-                continue
-            dl = len(doc_tokens)
-            tf: dict[str, int] = {}
-            for t in doc_tokens:
-                tf[t] = tf.get(t, 0) + 1
-            score = 0.0
-            for qt in q_tokens:
-                if qt in tf:
-                    f = tf[qt]
-                    # 标准 BM25 公式
-                    score += idf.get(qt, 0) * (f * (RETRIEVAL_CFG.bm25_k1 + 1)) / (
-                        f + RETRIEVAL_CFG.bm25_k1 * (1 - RETRIEVAL_CFG.bm25_b +
-                                                      RETRIEVAL_CFG.bm25_b * dl / avgdl)
-                    )
-            if score > 0:
-                scored.append((score, chunk_id, text, source))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return scored[:top_k]
-
-    def invalidate(self):
-        """清空索引缓存，下次查询时重建"""
-        with self._lock:
-            self._built = False
+def _bm25_like_search(query: str, top_k: int = 10) -> list[tuple[float, int, str, str]]:
+    """轻量全文检索：SQL LIKE + TF-IDF 加权，替代原内存 BM25。"""
+    tokens = _tokenize(query)
+    if not tokens:
+        return []
+    db = get_db()
+    N = db.execute("SELECT count(*) FROM chunks").fetchone()[0]
+    if N == 0:
+        return []
+    import math
+    # 预计算每个 token 的 DF 和 IDF
+    token_idf: dict[str, float] = {}
+    for token in tokens[:10]:
+        df = db.execute(
+            "SELECT count(*) FROM chunks WHERE text LIKE ?",
+            (f"%{token}%",),
+        ).fetchone()[0]
+        token_idf[token] = math.log(1.0 + (N - df + 0.5) / (df + 0.5)) if df > 0 else 0.0
+    # 对每个 token 检索并打分
+    scored: dict[int, tuple[float, str, str]] = {}
+    for token in tokens[:10]:
+        idf = token_idf.get(token, 0)
+        if idf == 0:
+            continue
+        try:
+            rows = db.execute(
+                "SELECT id, source, text FROM chunks WHERE text LIKE ? LIMIT ?",
+                (f"%{token}%", top_k * 3),
+            ).fetchall()
+        except Exception:
+            continue
+        for chunk_id, source, text in rows:
+            tf = text.lower().count(token.lower())
+            score = idf * (1.0 + math.log(max(tf, 1)))
+            if chunk_id in scored:
+                prev = scored[chunk_id]
+                scored[chunk_id] = (prev[0] + score, prev[1], prev[2])
+            else:
+                scored[chunk_id] = (score, source, text)
+    ranked = sorted(scored.items(), key=lambda x: x[1][0], reverse=True)
+    return [(score, cid, text, src) for cid, (score, src, text) in ranked[:top_k]]
 
 
-_bm25 = _BM25Index()
+
 
 
 # ═══════════════════════════════════════════════════════
@@ -250,6 +202,8 @@ def correct_query(question: str) -> str:
 
     时间复杂度 O(n·m)，n=query 长度，m=错误表条目数（通常几十个）
     """
+    if not isinstance(question, str):
+        return ""
     sorted_typos = sorted(_COMMON_TYPOS.items(), key=lambda x: len(x[0]), reverse=True)
     result = question
     i = 0
@@ -278,6 +232,8 @@ def expand_query(question: str) -> str:
 
     作用：短问题的词太少，向量和 BM25 都匹配不到足够多的候选项
     """
+    if not isinstance(question, str):
+        return ""
     if len(question) > 10:
         return question
     keywords = re.findall(r"[一-鿿]{2,}|[a-zA-Z]{2,}", question)
@@ -305,6 +261,8 @@ def rewrite_query(question: str) -> str:
 
     配置开关：ENABLE_QUERY_REWRITE=0 可关闭，省一次 LLM 调用
     """
+    if not isinstance(question, str) or not question.strip():
+        return question if isinstance(question, str) else ""
     if not RETRIEVAL_CFG.enable_query_rewrite:
         return question
     prompt = f"你是一个检索助手。请将以下用户问题改写为更适合向量检索的查询文本。要求：保留原意，补充关键的同义词和上下文，输出纯文本不要解释不要引号，控制在50字以内。\n\n用户问题：{question}\n\n改写后的检索query："
@@ -442,17 +400,13 @@ def _document_level_retrieval(question: str) -> list[str]:
         return [s[0] for s in list_sources()][:3]
     q_emb = embed_single(question)
     scored = []
-    for source, text in overviews:
-        rows = load_all_chunks(source)
-        for cid, src, t, emb_blob in rows:
-            if t == text:
-                try:
-                    emb = json.loads(emb_blob)
-                except Exception:
-                    import numpy as np
-                    emb = np.frombuffer(emb_blob, dtype=np.float32).tolist()
-                scored.append((cosine(q_emb, emb), source))
-                break
+    for source, text, emb_blob in overviews:
+        try:
+            emb = json.loads(emb_blob)
+        except Exception:
+            import numpy as np
+            emb = np.frombuffer(emb_blob, dtype=np.float32).tolist()
+        scored.append((cosine(q_emb, emb), source))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [src for _, src in scored[:3]]
 
@@ -466,23 +420,32 @@ def _keyword_search(question: str, top_k: int = 5) -> list | None:
     关键词兜底检索（0 成本）
 
     当向量 + BM25 都找不到任何候选时触发。
-    直接用问题中的关键词与所有 chunk 文本做字符串包含匹配。
-    命中率 = 匹配到的关键词数 / 问题总关键词数
-
-    这是最简单粗暴但最可靠的兜底——保证任何有字面匹配的问题至少能返回结果。
+    直接用 SQL LIKE 做关键词匹配，不再全量加载。
     """
-    rows = load_all_chunks()
     keywords = re.findall(r"[一-鿿]{2,}|[a-zA-Z]{2,}|\d+", question.lower())
     if not keywords:
         return None
+    db = get_db()
     scored = []
-    for chunk_id, source, text, _ in rows:
-        text_lower = text.lower()
-        hits = sum(1 for kw in keywords if kw in text_lower)
-        if hits > 0:
-            scored.append((hits / len(keywords), chunk_id, text, source))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[:top_k] if scored else None
+    for kw in keywords[:5]:
+        try:
+            rows = db.execute(
+                "SELECT id, source, text FROM chunks WHERE text LIKE ? LIMIT ?",
+                (f"%{kw}%", top_k),
+            ).fetchall()
+        except Exception:
+            continue
+        for chunk_id, source, text in rows:
+            scored.append((1.0, chunk_id, text, source))
+    if not scored:
+        return None
+    seen = set()
+    unique = []
+    for s in scored:
+        if s[1] not in seen:
+            seen.add(s[1])
+            unique.append(s)
+    return unique[:top_k]
 
 
 # ═══════════════════════════════════════════════════════
@@ -503,8 +466,10 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
     返回：
       (contexts, source_paths) 或 None（知识库为空）
     """
-    tk = top_k or RETRIEVAL_CFG.top_k
-    ex = expand or RETRIEVAL_CFG.expand
+    if not isinstance(question, str) or not question.strip():
+        return None
+    tk = top_k if top_k is not None and top_k > 0 else RETRIEVAL_CFG.top_k
+    ex = expand if expand is not None and expand >= 0 else RETRIEVAL_CFG.expand
     cache_key = f"{question}|{tk}|{ex}"
 
     # 缓存命中：同一问题 + 同参数直接返回上次结果
@@ -540,25 +505,20 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
 
     # ── 步骤 ⑤：向量语义检索 ──
     q_emb = embed_single(rewritten_q)
-    primary_rows = load_all_chunks()
-    sem_scored = []
-    for chunk_id, source, text, emb_blob in primary_rows:
-        try:
-            emb = json.loads(emb_blob)
-        except Exception:
-            import numpy as np
-            emb = np.frombuffer(emb_blob, dtype=np.float32).tolist()
-        score = cosine(q_emb, emb)
-        sem_scored.append((score, chunk_id, text, source))
-    sem_scored.sort(key=lambda x: x[0], reverse=True)
-    steps["total_chunks"] = len(primary_rows)
-    sem_top = [item for item in sem_scored if item[0] >= RETRIEVAL_CFG.min_similarity][:tk * 2]
+    sem_top = []
+    vs = None
+    try:
+        vs = get_vector_store()
+        if vs.size > 0:
+            sem_top = vs.search(q_emb, top_k=tk * 2, min_similarity=RETRIEVAL_CFG.min_similarity)
+    except Exception:
+        sem_top = []
+    steps["total_chunks"] = vs.size if vs and vs.size > 0 else 0
     steps["semantic_top"] = len(sem_top)
     steps["top_score"] = round(sem_top[0][0], 3) if sem_top else 0
 
-    # ── 步骤 ⑥：BM25 全文检索 ──
-    # 用扩展后的 query（保留原始词汇）做 BM25 搜索
-    bm25_top = _bm25.search(expanded_q, top_k=tk * 2)
+    # ── 步骤 ⑥：FTS5 全文检索 ──
+    bm25_top = _bm25_like_search(expanded_q, top_k=tk * 2)
     steps["bm25_top"] = len(bm25_top)
 
     # ── 步骤 ⑦：RRF 融合 ──
@@ -631,9 +591,8 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
 
 
 def clear_cache():
-    """清空检索缓存、BM25 索引和向量存储"""
+    """清空检索缓存和向量存储"""
     with _cache_lock:
         _retrieval_cache.clear()
-    _bm25.invalidate()
     from .vector_store import rebuild_vector_store
     rebuild_vector_store()

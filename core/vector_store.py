@@ -19,6 +19,7 @@ class VectorStore:
         self._sources: list[str] = []
         self._index_path = STORAGE_CFG.data_dir / "vectors.npy"
         self._ids_path = STORAGE_CFG.data_dir / "vector_ids.npy"
+        self._meta_path = STORAGE_CFG.data_dir / "vector_meta.json"
         self._lock = threading.Lock()
 
     def build(self):
@@ -141,12 +142,21 @@ class VectorStore:
                 return
             np.save(str(self._index_path), self._embeddings)
             np.save(str(self._ids_path), self._ids)
+            import json
+            self._meta_path.write_text(
+                json.dumps({"texts": self._texts, "sources": self._sources}, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
     def load_disk(self) -> bool:
         with self._lock:
-            if self._index_path.exists() and self._ids_path.exists():
+            if self._index_path.exists() and self._ids_path.exists() and self._meta_path.exists():
                 self._embeddings = np.load(str(self._index_path))
                 self._ids = np.load(str(self._ids_path))
+                import json
+                meta = json.loads(self._meta_path.read_text(encoding="utf-8"))
+                self._texts = meta.get("texts", [])
+                self._sources = meta.get("sources", [])
                 return True
             return False
 

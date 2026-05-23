@@ -44,12 +44,22 @@ def _init_conn(conn: sqlite3.Connection):
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_parent_id ON chunks(parent_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_chunk_prefix ON feedback(chunk_prefix)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sources_added_at ON sources(added_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_text ON chunks(text)")
+    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(text, tokenize='trigram')")
     conn.commit()
 
 
 def get_db() -> sqlite3.Connection:
     """线程局部的数据库连接（WAL 模式，连接复用）"""
     conn = getattr(_thread_local, 'conn', None)
+    if conn is not None:
+        try:
+            conn.execute("SELECT 1")
+        except Exception:
+            conn = None
     if conn is None:
         STORAGE_CFG.data_dir.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(STORAGE_CFG.data_dir / "vectors.db"), check_same_thread=False)
@@ -230,10 +240,10 @@ def list_sources() -> list[tuple[str, str]]:
     return get_db().execute("SELECT path, added_at FROM sources ORDER BY added_at DESC").fetchall()
 
 
-def overview_sources() -> list[tuple[str, str]]:
+def overview_sources() -> list[tuple[str, str, bytes]]:
     """返回有【文档章节概览】块的来源"""
     return get_db().execute(
-        "SELECT source, text FROM chunks WHERE text LIKE '【文档章节概览】%'"
+        "SELECT source, text, embedding FROM chunks WHERE text LIKE '【文档章节概览】%'"
     ).fetchall()
 
 

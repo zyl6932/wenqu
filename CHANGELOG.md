@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### 修复 (2026-05-23)
+- **万级文档 P0 修复**：
+  - 检索接入 VectorStore（numpy 批量 cosine），消除 `load_all_chunks()` 全量加载导致的 OOM
+  - `_document_level_retrieval` 从 N+1 查询改为 `overview_sources()` 直接返回 embedding，1 万次 SQL → 1 次
+  - BM25 从 3GB 内存索引换为 SQL LIKE + TF-IDF 加权（`_bm25_like_search`），消除内存爆炸
+  - `_keyword_search` 关键词兜底从全量加载换为 SQL LIKE 查询
+  - `import_docs` 无条件 `delete_source`，消除中途崩溃导致的孤儿 chunk 重复
+  - `embed()` 加 try/except，Ollama 故障时不再返回含 None 的列表
+  - WAL checkpoint 管理：每个文件 import 后 `PRAGMA wal_checkpoint(PASSIVE)`
+  - LLM 信号量 30 秒超时，避免 API 故障时永久阻塞
+  - SSE 流加 `request.is_disconnected()` 检测，避免客户端断开后继续消耗资源
+  - DB 连接健康检查：`get_db()` 缓存连接前 `SELECT 1`，失效自动重建
+  - VectorStore 持久化修复：`save()`/`load_disk()` 增加 `_texts`/`_sources` 元数据文件
+  - 检索不再受对话历史影响：`ask_stream` 用原始问题检索，历史仅用于 LLM 多轮上下文
+- 数据库加 4 个索引：`chunks.parent_id`、`feedback.chunk_prefix`、`sources.added_at`、`chunks.text`
+- API 入参校验：config 类型检查、int 转换 400 报错、queue maxsize 64→256
+- LLM/Embed API 响应用 `.get()` 安全取值，防御异常返回结构
+
 ### 新增 (2026-05-21)
 - **对话标题栏**：聊天区顶部显示当前对话标题，与侧边栏"问渠"像素级对齐
 - **LLM 生成标题**：新对话发送首条消息后，异步调用 LLM 自动生成简洁标题

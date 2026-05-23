@@ -8,6 +8,13 @@ from .config import LLM_CFG, EMBED_CFG
 
 _llm_semaphore = threading.BoundedSemaphore(10)
 
+_LLM_ACQUIRE_TIMEOUT = 30
+
+
+def _acquire_semaphore():
+    if not _llm_semaphore.acquire(timeout=_LLM_ACQUIRE_TIMEOUT):
+        raise RuntimeError("LLM 并发已满，请稍后重试")
+
 _cached_ollama_model: str | None = None
 
 
@@ -65,8 +72,11 @@ def _ollama_stream(url: str, data: dict):
 
 
 def chat(messages: list[dict], temperature: float | None = None, provider: str | None = None) -> str:
-    with _llm_semaphore:
+    _acquire_semaphore()
+    try:
         return _chat(messages, temperature, provider)
+    finally:
+        _llm_semaphore.release()
 
 
 def _chat(messages: list[dict], temperature: float | None = None, provider: str | None = None) -> str:
@@ -85,7 +95,8 @@ def _chat(messages: list[dict], temperature: float | None = None, provider: str 
                 },
             },
         )
-        return result["message"]["content"]
+        msg = result.get("message", {})
+        return msg.get("content", "")
 
     result = _deepseek_post(
         f"{LLM_CFG.api_base}/chat/completions",
@@ -96,15 +107,17 @@ def _chat(messages: list[dict], temperature: float | None = None, provider: str 
             "seed": LLM_CFG.seed,
         },
     )
-    msg = result["choices"][0]["message"]
-    # deepseek-reasoner 返回 reasoning_content
+    choices = result.get("choices", [])
+    if not choices:
+        return ""
+    msg = choices[0].get("message", {})
     return msg.get("content") or msg.get("reasoning_content") or ""
 
 
 def chat_stream(messages: list[dict], provider: str | None = None):
     """流式调用 LLM。yield ("token", text) 或 ("think", text)。"""
+    _acquire_semaphore()
     try:
-        _llm_semaphore.acquire()
         yield from _chat_stream(messages, provider)
     finally:
         _llm_semaphore.release()
@@ -152,7 +165,10 @@ def _chat_stream(messages: list[dict], provider: str | None = None):
             break
         try:
             chunk = json.loads(data)
-            delta = chunk["choices"][0].get("delta", {})
+            choices = chunk.get("choices", [])
+            if not choices:
+                continue
+            delta = choices[0].get("delta", {})
             # 新模型可能不含 reasoning_content 或值为空
             rc = delta.get("reasoning_content")
             if rc:

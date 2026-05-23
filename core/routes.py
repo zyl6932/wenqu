@@ -26,8 +26,6 @@ from .server_utils import log_error, check_rate
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
 REACT_DIST = STATIC_DIR / "dist"
-
-
 def register_routes(app):
     # ── 限流中间件（线程池运行，避免阻塞事件循环）────
     _rate_executor = _TPE(max_workers=4, thread_name_prefix="rate")
@@ -61,7 +59,20 @@ def register_routes(app):
         changed = False
         for key in ("min_similarity", "top_k", "enable_query_rewrite", "enable_rerank"):
             if key in data:
-                _runtime_overrides[key] = data[key]
+                val = data[key]
+                if key in ("min_similarity",):
+                    try:
+                        val = float(val)
+                    except (TypeError, ValueError):
+                        raise HTTPException(400, f"{key} 必须是数字")
+                elif key in ("top_k",):
+                    try:
+                        val = int(val)
+                    except (TypeError, ValueError):
+                        raise HTTPException(400, f"{key} 必须是整数")
+                elif key in ("enable_query_rewrite", "enable_rerank"):
+                    val = bool(val)
+                _runtime_overrides[key] = val
                 changed = True
         if changed:
             apply_runtime_overrides()
@@ -133,7 +144,11 @@ def register_routes(app):
         if not chunk_id:
             raise HTTPException(400, "缺少 id")
         try:
-            update_chunk(int(chunk_id), text)
+            chunk_id_int = int(chunk_id)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "id 必须是整数")
+        try:
+            update_chunk(chunk_id_int, text)
             return {"message": "已更新"}
         except Exception as e:
             log_error(f"PUT /api/chunks: {e}")
@@ -145,12 +160,18 @@ def register_routes(app):
         chunk_ids = data.get("ids")
         try:
             if chunk_ids:
+                if not chunk_ids:
+                    raise HTTPException(400, "ids 不能为空")
                 delete_chunks([int(c) for c in chunk_ids])
                 return {"message": f"已删除 {len(chunk_ids)} 块"}
             elif chunk_id:
                 delete_chunk(int(chunk_id))
                 return {"message": "已删除"}
             raise HTTPException(400, "缺少 id 或 ids")
+        except HTTPException:
+            raise
+        except (TypeError, ValueError):
+            raise HTTPException(400, "id/ids 必须为整数")
         except Exception as e:
             log_error(f"DELETE /api/chunks: {e}")
             raise HTTPException(500, str(e))
@@ -162,7 +183,11 @@ def register_routes(app):
         if not chunk_id or not separator:
             raise HTTPException(400, "缺少 id 或 separator")
         try:
-            new_ids = split_chunk(int(chunk_id), separator)
+            chunk_id_int = int(chunk_id)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "id 必须是整数")
+        try:
+            new_ids = split_chunk(chunk_id_int, separator)
             return {"message": f"已拆分为 {len(new_ids)} 块", "ids": new_ids}
         except Exception as e:
             log_error(f"POST /api/chunks/split: {e}")
@@ -175,6 +200,8 @@ def register_routes(app):
             raise HTTPException(400, "至少选择两块")
         try:
             new_id = merge_chunks([int(c) for c in chunk_ids])
+        except (TypeError, ValueError):
+            raise HTTPException(400, "ids 必须全部为整数")
             return {"message": "已合并", "id": new_id}
         except Exception as e:
             log_error(f"POST /api/chunks/merge: {e}")
@@ -196,7 +223,7 @@ def register_routes(app):
         return {"answer": answer, "sources": [Path(s).name for s in source_paths]}
 
     @app.post("/api/ask/stream")
-    async def api_ask_stream(data: dict):
+    async def api_ask_stream(data: dict, request: Request):
         question = data.get("question", "").strip()
         if not question:
             raise HTTPException(400, "问题不能为空")
@@ -208,7 +235,7 @@ def register_routes(app):
 
         async def sse_generate():
             loop = asyncio.get_running_loop()
-            queue = asyncio.Queue(maxsize=64)
+            queue = asyncio.Queue(maxsize=256)
             cancelled = threading.Event()
 
             def produce():
@@ -229,6 +256,8 @@ def register_routes(app):
                     item = await queue.get()
                     if item is None:
                         break
+                    if await request.is_disconnected():
+                        return
                     event_type, payload = item
                     line = json.dumps({event_type: payload}, ensure_ascii=False)
                     yield f"data: {line}\n\n"
@@ -291,6 +320,8 @@ def register_routes(app):
         question = data.get("question", "")
         contexts = data.get("contexts", [])
         helpful = data.get("helpful", True)
+        if not isinstance(helpful, bool):
+            helpful = bool(helpful)
         if not question or not contexts:
             raise HTTPException(400, "缺少 question 或 contexts")
         try:
@@ -341,7 +372,7 @@ def register_routes(app):
         if data.get("stream"):
             async def sse_chat():
                 loop = asyncio.get_running_loop()
-                queue = asyncio.Queue(maxsize=64)
+                queue = asyncio.Queue(maxsize=256)
                 cancelled = threading.Event()
 
                 def produce():
