@@ -585,9 +585,15 @@ def retrieve(question: str, top_k: int | None = None, expand: int | None = None,
             seen.add(key)
             unique.append(t)
 
-    sources = list(set(src for _, _, _, src in top))
-    _cache_set(cache_key, (unique, sources))
-    return unique, sources
+    # 每个源文档取最高相关度分数
+    src_scores: dict[str, float] = {}
+    for score, _, _, src in top:
+        if src not in src_scores or score > src_scores[src]:
+            src_scores[src] = score
+    sources = sorted(src_scores.keys(), key=lambda s: src_scores[s], reverse=True)
+    source_scores = [round(src_scores[s], 4) for s in sources]
+    _cache_set(cache_key, (unique, sources, source_scores))
+    return unique, sources, source_scores
 
 
 def clear_cache():

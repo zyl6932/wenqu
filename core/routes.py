@@ -214,11 +214,12 @@ def register_routes(app):
         result = retrieve(question)
         if result is None:
             return {"answer": "未找到相关内容", "sources": []}
-        contexts, source_paths = result
+        contexts, source_paths, source_scores = result
         prompt = build_prompt(contexts, question)
         from .llm import chat
         answer = chat([{"role": "system", "content": "你是严谨的知识库助手。"}, {"role": "user", "content": prompt}])
-        return {"answer": answer, "sources": [Path(s).name for s in source_paths]}
+        source_names = [Path(s).name for s in source_paths]
+        return {"answer": answer, "sources": [{"name": n, "score": s} for n, s in zip(source_names, source_scores)]}
 
     @app.post("/api/ask/stream")
     async def api_ask_stream(data: dict, request: Request):
@@ -362,7 +363,7 @@ def register_routes(app):
                                          headers={"Cache-Control": "no-cache"})
             return {"choices": [{"index": 0, "message": {"role": "assistant", "content": msg}, "finish_reason": "stop"}]}
 
-        contexts, source_paths = result
+        contexts, source_paths, source_scores = result
         prompt = build_prompt(contexts, user_msg)
         system_msg = {"role": "system", "content": "你是一个严谨的知识库助手，仅根据提供的参考内容回答问题。"}
         llm_messages = [system_msg] + messages[:-1] + [{"role": "user", "content": prompt}]
@@ -425,7 +426,7 @@ def register_routes(app):
             return JSONResponse({"error": {"message": str(e), "type": "api_error"}}, 500)
         return {"id": request_id, "object": "chat.completion", "created": int(_time.time()), "model": "wenqu-v1",
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}],
-                "sources": [Path(s).name for s in source_paths]}
+                "sources": [{"name": Path(s).name, "score": sc} for s, sc in zip(source_paths, source_scores)]}
 
     @app.post("/v1/embeddings")
     def api_v1_embeddings(data: dict):

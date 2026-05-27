@@ -11,6 +11,7 @@
 - **MessageItem clipboard**：加 `try/catch`，非安全环境下不再抛异常
 - **handleSend 依赖优化**：移除多余的 `state.conversations` 依赖，减少流式输出时的回调重建
 - **历史记录交互**：改为长按输入框 500ms 弹出，鼠标滑动高亮、松开选择，下拉宽度匹配输入框
+- **引用文档相关度**：每个文档后显示相关度百分比，按相关度降序排列
 
 ### 移除 (2026-05-27)
 - 移除原版 vanilla HTML 前端 (`static/index.html`)，仅保留 React 前端

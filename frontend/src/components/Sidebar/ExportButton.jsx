@@ -13,7 +13,7 @@ export default function ExportButton() {
     let md = `# ${conv.title}\n\n`;
     for (const m of conv.messages) {
       if (m.role === 'user') md += `> ${m.content}\n\n`;
-      else { md += `${m.content}\n\n`; if (m.sources?.length) md += `*来源: ${m.sources.join(', ')}*\n\n`; }
+      else { md += `${m.content}\n\n`; if (m.sources?.length) md += `*来源: ${m.sources.map(s => typeof s === 'string' ? s : s.name).join(', ')}*\n\n`; }
     }
     md += `\n---\n*${new Date().toLocaleString()}*\n`;
     const blob = new Blob([md], { type: 'text/markdown' });

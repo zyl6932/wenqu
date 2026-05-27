@@ -91,9 +91,9 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
             yield ("error", "知识库为空，请先导入文档")
         return
 
-    contexts, source_paths = result
+    contexts, source_paths, source_scores = result
     source_names = [Path(s).name for s in source_paths]
-    yield ("sources", source_names)
+    yield ("sources", [{"name": n, "score": s} for n, s in zip(source_names, source_scores)])
 
     # 准备思考步骤（不立即发送，穿插在 token 流中）
     think_steps.append(f"问题：{trace.get('original', question)}")
@@ -160,7 +160,7 @@ def ask_stream(question: str, top_k: int | None = None, history: list[dict] | No
                 yield ("token", text)
 
     if source_names:
-        yield ("sources", source_names)
+        yield ("sources", [{"name": n, "score": s} for n, s in zip(source_names, source_scores)])
 
 
 # ── 导入文档 ───────────────────────────────────────
