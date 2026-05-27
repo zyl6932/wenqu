@@ -9,6 +9,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   const [hoverIndex, setHoverIndex] = useState(-1);
   const [longPressActive, setLongPressActive] = useState(false);
   const textareaRef = useRef(null);
+  const wrapperRef = useRef(null);
   const longPressTimer = useRef(null);
   const autoResize = useAutoResize();
   const { getSearchHistory } = useConversation();
@@ -103,6 +104,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
 
   // wrapper 上的 pointerup，处理鼠标在下拉区域松开
   function handleWrapperUp(e) {
+    clearTimeout(longPressTimer.current);
     if (!longPressActive) return;
     // 如果 hoverIndex 有效，选择对应项
     const items = history?.slice(0, 8);
@@ -116,7 +118,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   return (
     <div className="chat-input-area">
       <div ref={wrapperRef} className="input-wrapper" style={{ position: 'relative' }}
-        onPointerDown={handlePointerDown}
         onPointerUp={handleWrapperUp}
         onPointerMove={handlePointerMove}
         onPointerCancel={handlePointerCancel}
@@ -127,6 +128,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
           hoverIndex={hoverIndex}
           onHoverIndex={setHoverIndex}
           longPressMode={longPressActive}
+          onClose={() => setShowHistory(false)}
           onSelect={(q) => { if (q) { setValue(q); setShowHistory(false); } else setShowHistory(false); }}
         />
       )}
@@ -140,6 +142,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
           onCompositionEnd={() => {}}
           onFocus={handleFocus}
           onPaste={handlePaste}
+          onPointerDown={handlePointerDown}
         />
         <button className="btn-send" disabled={!value.trim() && !isStreaming} onClick={isStreaming ? onStop : handleSend}>
           {isStreaming ? (

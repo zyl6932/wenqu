@@ -460,6 +460,44 @@ class BM25Test(unittest.TestCase):
         self.assertNotIn("，", tokens)
 
 
+# ── 前端构建测试 ──────────────────────────────────
+class FrontendBuildTest(unittest.TestCase):
+    """检测前端构建产物是否存在且 JS 无语法错误"""
+
+    def test_dist_index_html_exists(self):
+        dist = Path(__file__).parent.parent / 'static' / 'dist' / 'index.html'
+        self.assertTrue(dist.exists(), f'{dist} 不存在，请先 npm run build')
+
+    def test_dist_js_bundle_exists(self):
+        dist = Path(__file__).parent.parent / 'static' / 'dist' / 'assets'
+        self.assertTrue(dist.exists(), 'static/dist/assets 不存在')
+        js_files = list(dist.glob('index-*.js'))
+        self.assertTrue(len(js_files) > 0, '未找到 JS bundle')
+
+    def test_js_bundle_parseable(self):
+        """用 Node.js 解析 JS bundle，检测语法错误（白屏常见原因）"""
+        import subprocess
+        dist = Path(__file__).parent.parent / 'static' / 'dist' / 'assets'
+        js_files = list(dist.glob('index-*.js'))
+        if not js_files:
+            self.skipTest('无 JS bundle')
+        js_file = js_files[0].resolve()
+        result = subprocess.run(
+            ['node', '-e', f'new Function(require("fs").readFileSync(String.raw`{js_file}`,"utf8"))'],
+            capture_output=True, text=True, timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, f'JS bundle 语法错误:\n{result.stderr[:500]}')
+
+    def test_js_bundle_has_react_root(self):
+        """确认 bundle 包含 React 根节点渲染代码"""
+        dist = Path(__file__).parent.parent / 'static' / 'dist' / 'assets'
+        js_files = list(dist.glob('index-*.js'))
+        if not js_files:
+            self.skipTest('无 JS bundle')
+        content = js_files[0].read_text(encoding='utf-8')
+        self.assertIn('root', content, 'JS bundle 中未找到 root 引用')
+
+
 # ── 回归测试（针对已知 bug）──────────────────────────
 class RegressionTest(unittest.TestCase):
     def test_embed_deserialize_both_formats(self):
@@ -613,7 +651,7 @@ if __name__ == '__main__':
         suite = unittest.TestLoader().loadTestsFromModule(sys.modules[__name__])
         filtered = unittest.TestSuite()
         for test_class in [ConfigTest, StorageTest, ChunkerTest, RetrieveTest, BM25Test, EmbedTest, ParserTest,
-                           APIConfigTest, LLMProviderTest, RegressionTest, StaticFileTest, AskStreamTest]:
+                           APIConfigTest, LLMProviderTest, RegressionTest, StaticFileTest, AskStreamTest, FrontendBuildTest]:
             filtered.addTests(unittest.TestLoader().loadTestsFromTestCase(test_class))
         runner = unittest.TextTestRunner(verbosity=2)
         result = runner.run(filtered)

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { escHtml } from '../../utils/grouping';
 
 const HISTORY_KEY = 'wenqu_search_history';
@@ -11,8 +11,16 @@ function removeItem(q) {
   } catch {}
 }
 
-export default function SearchHistoryDropdown({ items, onSelect, hoverIndex, onHoverIndex, longPressMode }) {
+export default function SearchHistoryDropdown({ items, onSelect, onClose, hoverIndex, onHoverIndex, longPressMode }) {
   const ref = useRef(null);
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose?.();
+    }
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [onClose]);
 
   if (!items || !items.length) return null;
 
