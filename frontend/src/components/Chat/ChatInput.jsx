@@ -79,11 +79,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
     }, 500);
   }
 
-  function handlePointerUp() {
-    clearTimeout(longPressTimer.current);
-    // 长按模式下的松开由 wrapper 的 onPointerUp 统一处理
-  }
-
   function handlePointerMove(e) {
     if (!longPressActive || !showHistory) return;
     // 根据鼠标位置计算高亮项
@@ -120,7 +115,12 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
 
   return (
     <div className="chat-input-area">
-      <div ref={wrapperRef} className="input-wrapper" style={{ position: 'relative' }} onPointerUp={handleWrapperUp}>
+      <div ref={wrapperRef} className="input-wrapper" style={{ position: 'relative' }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handleWrapperUp}
+        onPointerMove={handlePointerMove}
+        onPointerCancel={handlePointerCancel}
+      >
       {showHistory && (
         <SearchHistoryDropdown
           items={history}
@@ -140,10 +140,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
           onCompositionEnd={() => {}}
           onFocus={handleFocus}
           onPaste={handlePaste}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerMove={handlePointerMove}
-          onPointerCancel={handlePointerCancel}
         />
         <button className="btn-send" disabled={!value.trim() && !isStreaming} onClick={isStreaming ? onStop : handleSend}>
           {isStreaming ? (
