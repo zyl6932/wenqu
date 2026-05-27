@@ -17,7 +17,14 @@ export default function ChunkModal({ source, onClose }) {
     } catch { setChunks([]); }
   }, [source]);
 
-  useEffect(() => { if (source) load(); }, [source, load]);
+  useEffect(() => {
+    if (!source) return;
+    let cancelled = false;
+    fetchChunks(source).then(data => {
+      if (!cancelled) setChunks(data.chunks || []);
+    }).catch(() => { if (!cancelled) setChunks([]); });
+    return () => { cancelled = true; };
+  }, [source]);
 
   const title = source ? `块编辑 - ${source.split(/[/\\]/).pop()} (${chunks?.length || 0} 块)` : '块编辑器';
 
@@ -62,7 +69,7 @@ export default function ChunkModal({ source, onClose }) {
   async function handleRechunk() {
     if (!confirm('重新分块将清除所有现有块，确定？')) return;
     try {
-      const data = await fetchChunks(source);
+      const data = await fetchChunks(source, 1, 10000);
       if (data.chunks?.length) await deleteChunks(data.chunks.map(c => c.id));
       const imp = await importDocs();
       addToast(imp.message || '完成');

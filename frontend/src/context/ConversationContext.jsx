@@ -4,6 +4,9 @@ const STORAGE_KEY = 'wenqu_conversations';
 const ACTIVE_KEY = 'wenqu_active_conv';
 const HISTORY_KEY = 'wenqu_search_history';
 
+let _msgSeq = 0;
+function msgId() { return Date.now().toString(36) + '-' + (++_msgSeq).toString(36); }
+
 function loadConversations() {
   try {
     const convs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -61,7 +64,7 @@ function convReducer(state, action) {
       next = {
         ...state,
         conversations: state.conversations.map(c => c.id === state.activeConvId
-          ? { ...c, title, messages: [...c.messages, { role: 'user', content: action.content, timestamp: Date.now() }] }
+          ? { ...c, title, messages: [...c.messages, { _id: msgId(), role: 'user', content: action.content, timestamp: Date.now() }] }
           : c)
       };
       break;
@@ -70,7 +73,7 @@ function convReducer(state, action) {
       next = {
         ...state,
         conversations: state.conversations.map(c => c.id === state.activeConvId
-          ? { ...c, messages: [...c.messages, { role: 'ai', content: '', thinkingContent: '', sources: [], timestamp: Date.now() }] }
+          ? { ...c, messages: [...c.messages, { _id: msgId(), role: 'ai', content: '', thinkingContent: '', sources: [], timestamp: Date.now() }] }
           : c)
       };
       break;

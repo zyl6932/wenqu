@@ -18,6 +18,7 @@ export default function ChatArea({ sidebarCollapsed }) {
   const msgListRef = useRef(null);
 
   const handleSend = useCallback((question) => {
+    if (stopRef.current) return; // 同步守卫，防止双击重复发送
     const prevMessages = getActiveConv()?.messages || [];
     addSearchHistory(question);
 
@@ -79,7 +80,7 @@ export default function ChatArea({ sidebarCollapsed }) {
       localStorage.getItem('wenqu_use_local') === 'true' ? 'ollama' : null
     );
     stopRef.current = stop;
-  }, [state.conversations, dispatch, addSearchHistory, getActiveConv, addToast]);
+  }, [dispatch, addSearchHistory, getActiveConv, addToast]);
 
   const handleStop = useCallback(() => {
     if (stopRef.current) stopRef.current();

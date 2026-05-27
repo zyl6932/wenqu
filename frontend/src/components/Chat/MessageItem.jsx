@@ -11,7 +11,7 @@ export default function MessageItem({ msg, prevQuestion, isLastAI, isStreaming, 
     function copyUserMsg(btn) {
       const contentEl = btn.closest('.message')?.querySelector('.message-content');
       if (contentEl) {
-        navigator.clipboard.writeText(contentEl.textContent);
+        try { navigator.clipboard.writeText(contentEl.textContent); } catch {}
         btn.textContent = '已复制';
         setTimeout(() => { btn.textContent = '复制'; }, 1500);
       }
