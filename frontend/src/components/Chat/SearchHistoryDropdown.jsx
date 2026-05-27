@@ -1,6 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { escHtml } from '../../utils/grouping';
-import { useConversation } from '../../context/ConversationContext';
 
 const HISTORY_KEY = 'wenqu_search_history';
 
@@ -12,17 +11,8 @@ function removeItem(q) {
   } catch {}
 }
 
-export default function SearchHistoryDropdown({ items, onSelect }) {
+export default function SearchHistoryDropdown({ items, onSelect, hoverIndex, onHoverIndex, longPressMode }) {
   const ref = useRef(null);
-  const [, forceUpdate] = React.useState(0);
-
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) onSelect(null);
-    }
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [onSelect]);
 
   if (!items || !items.length) return null;
 
@@ -34,31 +24,34 @@ export default function SearchHistoryDropdown({ items, onSelect }) {
       zIndex: 10, boxShadow: 'var(--shadow-lg)',
     }}>
       {items.slice(0, 8).map((q, i) => (
-        <div key={i} style={{
-          display: 'flex', alignItems: 'center',
-          padding: '8px 12px', cursor: 'pointer', fontSize: 13,
-          color: 'var(--ink-soft)', transition: 'background .1s',
+        <div key={i} data-hist-item style={{
+          display: 'flex', alignItems: 'center', height: 36,
+          padding: '8px 12px', cursor: 'pointer', fontSize: 13, boxSizing: 'border-box',
+          color: 'var(--ink-soft)',
+          background: hoverIndex === i ? 'var(--surface-hover)' : '',
         }}
-          onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-          onMouseOut={(e) => e.currentTarget.style.background = ''}
+          onMouseOver={() => onHoverIndex?.(i)}
+          onMouseDown={(e) => { e.preventDefault(); onSelect(q); }}
         >
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={() => onSelect(q)}>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {escHtml(q)}
           </span>
-          <button
-            onClick={(e) => { e.stopPropagation(); removeItem(q); forceUpdate(n => n + 1); }}
-            style={{
-              marginLeft: 8, width: 18, height: 18, border: 'none', borderRadius: 3,
-              background: 'transparent', color: 'var(--ink-mute)', cursor: 'pointer',
-              fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, opacity: 0,
-            }}
-            className="history-item-del"
-            onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
-            onMouseOut={(e) => e.currentTarget.style.opacity = '0'}
-          >
-            ×
-          </button>
+          {!longPressMode && (
+            <button
+              onClick={(e) => { e.stopPropagation(); removeItem(q); }}
+              style={{
+                marginLeft: 8, width: 18, height: 18, border: 'none', borderRadius: 3,
+                background: 'transparent', color: 'var(--ink-mute)', cursor: 'pointer',
+                fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, opacity: 0,
+              }}
+              className="history-item-del"
+              onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseOut={(e) => e.currentTarget.style.opacity = '0'}
+            >
+              ×
+            </button>
+          )}
         </div>
       ))}
     </div>

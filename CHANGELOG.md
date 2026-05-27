@@ -7,10 +7,10 @@
 - **消息 key 用 index**：改为唯一 `_id`，删除消息后 React 不再错认组件状态
 - **双击发送竞态**：用 `stopRef` 同步守卫替代异步 `isStreaming` state，防止快速双击启动两个流导致消息错乱
 - **DocModal/ChunkModal 卸载后 setState**：fetch 回调加 `cancelled` flag，快速开关弹窗不再触发已卸载组件的状态更新
-- **消息 key 用 index**：改为唯一 `_id`，删除消息后 React 不再错认组件状态
 - **handleRechunk 分页 bug**：`fetchChunks` 传 `pageSize=10000`，超过 50 块时不再留孤儿数据
 - **MessageItem clipboard**：加 `try/catch`，非安全环境下不再抛异常
 - **handleSend 依赖优化**：移除多余的 `state.conversations` 依赖，减少流式输出时的回调重建
+- **历史记录交互**：改为长按输入框 500ms 弹出，鼠标滑动高亮、松开选择，下拉宽度匹配输入框
 
 ### 移除 (2026-05-27)
 - 移除原版 vanilla HTML 前端 (`static/index.html`)，仅保留 React 前端

@@ -1,13 +1,15 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAutoResize } from '../../hooks/useAutoResize';
 import { useConversation } from '../../context/ConversationContext';
 import SearchHistoryDropdown from './SearchHistoryDropdown';
 
 export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inputRef }) {
   const [value, setValue] = useState('');
-  const [isComposing, setIsComposing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState(-1);
+  const [longPressActive, setLongPressActive] = useState(false);
   const textareaRef = useRef(null);
+  const longPressTimer = useRef(null);
   const autoResize = useAutoResize();
   const { getSearchHistory } = useConversation();
 
@@ -27,6 +29,10 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
       }, 0);
     }
   }, [fillValue?.key]);
+
+  useEffect(() => {
+    return () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
+  }, []);
 
   const history = getSearchHistory();
 
@@ -60,13 +66,68 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   }
 
   function handleFocus() {
-    setIsComposing(false);
-    if (!value) setShowHistory(true);
+    if (!longPressActive) setShowHistory(false);
+  }
+
+  // 长按 500ms 弹出历史
+  function handlePointerDown(e) {
+    if (e.button !== 0) return;
+    longPressTimer.current = setTimeout(() => {
+      setLongPressActive(true);
+      setShowHistory(true);
+      setHoverIndex(-1);
+    }, 500);
+  }
+
+  function handlePointerUp(e) {
+    clearTimeout(longPressTimer.current);
+    if (longPressActive) {
+      // 长按模式下松开：选择当前高亮项
+      const items = history?.slice(0, 8);
+      if (hoverIndex >= 0 && items?.[hoverIndex]) {
+        setValue(items[hoverIndex]);
+        setShowHistory(false);
+      } else {
+        setShowHistory(false);
+      }
+      setLongPressActive(false);
+      e.preventDefault();
+    }
+  }
+
+  function handlePointerMove(e) {
+    if (!longPressActive || !showHistory) return;
+    // 根据鼠标位置计算高亮项
+    const dropdown = document.querySelector('.chat-input-area > div:first-child');
+    if (!dropdown) return;
+    const items = dropdown.querySelectorAll('[data-hist-item]');
+    const rect = dropdown.getBoundingClientRect();
+    if (e.clientY < rect.top || e.clientY > rect.bottom) {
+      setHoverIndex(-1);
+      return;
+    }
+    const y = e.clientY - rect.top;
+    const idx = Math.floor(y / 36); // 每项约 36px
+    setHoverIndex(Math.min(Math.max(idx, 0), (items.length || 1) - 1));
+  }
+
+  function handlePointerCancel() {
+    clearTimeout(longPressTimer.current);
+    setLongPressActive(false);
+    setShowHistory(false);
   }
 
   return (
     <div className="chat-input-area" style={{ position: 'relative' }}>
-      {showHistory && <SearchHistoryDropdown items={history} onSelect={(q) => { if (q) { setValue(q); setShowHistory(false); } else setShowHistory(false); }} />}
+      {showHistory && (
+        <SearchHistoryDropdown
+          items={history}
+          hoverIndex={hoverIndex}
+          onHoverIndex={setHoverIndex}
+          longPressMode={longPressActive}
+          onSelect={(q) => { if (q) { setValue(q); setShowHistory(false); } else setShowHistory(false); }}
+        />
+      )}
       <div className="input-wrapper">
         <textarea
           ref={textareaRef}
@@ -75,10 +136,14 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
           value={value}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          onCompositionStart={() => setIsComposing(true)}
-          onCompositionEnd={() => setIsComposing(false)}
+          onCompositionEnd={() => {}}
           onFocus={handleFocus}
           onPaste={handlePaste}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerMove={handlePointerMove}
+          onPointerCancel={handlePointerCancel}
+          onPointerLeave={handlePointerCancel}
         />
         <button className="btn-send" disabled={!value.trim() && !isStreaming} onClick={isStreaming ? onStop : handleSend}>
           {isStreaming ? (
