@@ -17,7 +17,7 @@ export default function SearchHistoryDropdown({ items, onSelect, hoverIndex, onH
   if (!items || !items.length) return null;
 
   return (
-    <div ref={ref} style={{
+    <div ref={ref} className="history-dropdown" style={{
       position: 'absolute', bottom: '100%', left: 0, right: 0,
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderRadius: 8, marginBottom: 4, maxHeight: 200, overflowY: 'auto',

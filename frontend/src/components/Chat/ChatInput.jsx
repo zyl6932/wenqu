@@ -98,7 +98,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   function handlePointerMove(e) {
     if (!longPressActive || !showHistory) return;
     // 根据鼠标位置计算高亮项
-    const dropdown = document.querySelector('.chat-input-area > div:first-child');
+    const dropdown = document.querySelector('.history-dropdown');
     if (!dropdown) return;
     const items = dropdown.querySelectorAll('[data-hist-item]');
     const rect = dropdown.getBoundingClientRect();
@@ -118,7 +118,8 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   }
 
   return (
-    <div className="chat-input-area" style={{ position: 'relative' }}>
+    <div className="chat-input-area">
+      <div className="input-wrapper" style={{ position: 'relative' }}>
       {showHistory && (
         <SearchHistoryDropdown
           items={history}
@@ -128,7 +129,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
           onSelect={(q) => { if (q) { setValue(q); setShowHistory(false); } else setShowHistory(false); }}
         />
       )}
-      <div className="input-wrapper">
         <textarea
           ref={textareaRef}
           rows="1"
