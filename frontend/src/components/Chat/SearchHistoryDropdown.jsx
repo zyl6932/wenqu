@@ -31,7 +31,7 @@ export default function SearchHistoryDropdown({ items, onSelect, hoverIndex, onH
           background: hoverIndex === i ? 'var(--surface-hover)' : '',
         }}
           onMouseOver={() => onHoverIndex?.(i)}
-          onMouseDown={longPressMode ? (e) => e.preventDefault() : (e) => { e.preventDefault(); onSelect(q); }}
+          onMouseDown={(e) => { e.preventDefault(); onSelect(q); }}
         >
           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {escHtml(q)}

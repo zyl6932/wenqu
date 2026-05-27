@@ -9,7 +9,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   const [hoverIndex, setHoverIndex] = useState(-1);
   const [longPressActive, setLongPressActive] = useState(false);
   const textareaRef = useRef(null);
-  const wrapperRef = useRef(null);
   const longPressTimer = useRef(null);
   const autoResize = useAutoResize();
   const { getSearchHistory } = useConversation();
@@ -34,21 +33,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
   useEffect(() => {
     return () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
   }, []);
-
-  // 长按模式下全局监听松开
-  useEffect(() => {
-    if (!longPressActive) return;
-    function handleGlobalUp(e) {
-      const items = history?.slice(0, 8);
-      if (hoverIndex >= 0 && items?.[hoverIndex]) {
-        setValue(items[hoverIndex]);
-      }
-      setShowHistory(false);
-      setLongPressActive(false);
-    }
-    document.addEventListener('pointerup', handleGlobalUp);
-    return () => document.removeEventListener('pointerup', handleGlobalUp);
-  }, [longPressActive, hoverIndex, history]);
 
   const history = getSearchHistory();
 
@@ -95,32 +79,25 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
     }, 500);
   }
 
-  function handlePointerUp(e) {
+  function handlePointerUp() {
     clearTimeout(longPressTimer.current);
-    if (longPressActive) {
-      e.preventDefault();
-      // 由全局 listener 处理选择和关闭
-    }
+    // 长按模式下的松开由 wrapper 的 onPointerUp 统一处理
   }
 
   function handlePointerMove(e) {
     if (!longPressActive || !showHistory) return;
-    // 检查是否还在输入区域内
-    if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-      setHoverIndex(-1);
-      return;
-    }
     // 根据鼠标位置计算高亮项
     const dropdown = document.querySelector('.history-dropdown');
     if (!dropdown) return;
+    const items = dropdown.querySelectorAll('[data-hist-item]');
     const rect = dropdown.getBoundingClientRect();
     if (e.clientY < rect.top || e.clientY > rect.bottom) {
       setHoverIndex(-1);
       return;
     }
     const y = e.clientY - rect.top;
-    const idx = Math.floor(y / 36);
-    setHoverIndex(Math.min(Math.max(idx, 0), 7));
+    const idx = Math.floor(y / 36); // 每项约 36px
+    setHoverIndex(Math.min(Math.max(idx, 0), (items.length || 1) - 1));
   }
 
   function handlePointerCancel() {
@@ -129,9 +106,21 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
     setShowHistory(false);
   }
 
+  // wrapper 上的 pointerup，处理鼠标在下拉区域松开
+  function handleWrapperUp(e) {
+    if (!longPressActive) return;
+    // 如果 hoverIndex 有效，选择对应项
+    const items = history?.slice(0, 8);
+    if (hoverIndex >= 0 && items?.[hoverIndex]) {
+      setValue(items[hoverIndex]);
+    }
+    setLongPressActive(false);
+    setShowHistory(false);
+  }
+
   return (
     <div className="chat-input-area">
-      <div ref={wrapperRef} className="input-wrapper" style={{ position: 'relative' }}>
+      <div ref={wrapperRef} className="input-wrapper" style={{ position: 'relative' }} onPointerUp={handleWrapperUp}>
       {showHistory && (
         <SearchHistoryDropdown
           items={history}
