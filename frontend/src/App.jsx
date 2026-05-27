@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 import ChatArea from './components/Chat/ChatArea';
 import DocModal from './components/Modals/DocModal';
 import ChunkModal from './components/Modals/ChunkModal';
+import SettingsModal from './components/Sidebar/SettingsModal';
 import ToastContainer from './components/shared/ToastContainer';
 import { useConversation } from './context/ConversationContext';
 import { useToast } from './context/ToastContext';
@@ -15,6 +16,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => localStorage.getItem('wenqu_sidebar_collapsed') !== 'false'
   );
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const { dispatch } = useConversation();
   const { addToast } = useToast();
   const inputRef = useRef(null);
@@ -71,6 +73,7 @@ export default function App() {
           setSidebarCollapsed(next);
         }}
         onOpenChunks={setChunkSource}
+        onOpenSettings={() => setSettingsVisible(true)}
       />
       <button
         id="btn-expand-sidebar"
@@ -94,6 +97,7 @@ export default function App() {
       <ChatArea sidebarCollapsed={sidebarCollapsed} />
       {docPath && <DocModal path={docPath} onClose={() => setDocPath(null)} />}
       {chunkSource && <ChunkModal source={chunkSource} onClose={() => setChunkSource(null)} />}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} onOpenChunks={setChunkSource} />
     </>
   );
 }
