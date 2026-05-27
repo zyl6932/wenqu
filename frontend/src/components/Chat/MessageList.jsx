@@ -52,7 +52,7 @@ export default function MessageList({ elapsed, isStreaming, onFillInput, onScrol
         const lastAI = m.role === 'ai' && idx === conv.messages.length - 1;
         return (
           <MessageItem
-            key={idx}
+            key={m._id || idx}
             msg={m}
             prevQuestion={prevQ}
             isLastAI={lastAI}

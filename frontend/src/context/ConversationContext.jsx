@@ -61,7 +61,7 @@ function convReducer(state, action) {
       next = {
         ...state,
         conversations: state.conversations.map(c => c.id === state.activeConvId
-          ? { ...c, title, messages: [...c.messages, { role: 'user', content: action.content, timestamp: Date.now() }] }
+          ? { ...c, title, messages: [...c.messages, { _id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), role: 'user', content: action.content, timestamp: Date.now() }] }
           : c)
       };
       break;
@@ -70,7 +70,7 @@ function convReducer(state, action) {
       next = {
         ...state,
         conversations: state.conversations.map(c => c.id === state.activeConvId
-          ? { ...c, messages: [...c.messages, { role: 'ai', content: '', thinkingContent: '', sources: [], timestamp: Date.now() }] }
+          ? { ...c, messages: [...c.messages, { _id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), role: 'ai', content: '', thinkingContent: '', sources: [], timestamp: Date.now() }] }
           : c)
       };
       break;
