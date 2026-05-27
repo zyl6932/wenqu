@@ -91,7 +91,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
       setHoverIndex(-1);
       return;
     }
-    const y = e.clientY - rect.top;
+    const y = e.clientY - rect.top + dropdown.scrollTop;
     const idx = Math.floor(y / 36); // 每项约 36px
     setHoverIndex(Math.min(Math.max(idx, 0), (items.length || 1) - 1));
   }
