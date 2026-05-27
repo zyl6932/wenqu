@@ -5,7 +5,6 @@ API 路由 — 全部 FastAPI 端点
 import asyncio
 import json
 import time as _time
-import mimetypes
 import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor as _TPE
@@ -24,8 +23,7 @@ from .retrieve import retrieve
 from .config import EMBED_CFG, get_runtime_config, _runtime_overrides, apply_runtime_overrides
 from .server_utils import log_error, check_rate
 
-STATIC_DIR = Path(__file__).parent.parent / "static"
-REACT_DIST = STATIC_DIR / "dist"
+REACT_DIST = Path(__file__).parent.parent / "static" / "dist"
 def register_routes(app):
     # ── 限流中间件（线程池运行，避免阻塞事件循环）────
     _rate_executor = _TPE(max_workers=4, thread_name_prefix="rate")
@@ -446,18 +444,12 @@ def register_routes(app):
     # ── 静态文件 & SPA ──────────────────────────────
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        if (REACT_DIST / "index.html").is_file():
-            fp = REACT_DIST / full_path if full_path else REACT_DIST / "index.html"
-            if fp.is_file():
-                ct = {".html": "text/html; charset=utf-8", ".js": "application/javascript",
-                      ".css": "text/css", ".svg": "image/svg+xml", ".woff2": "font/woff2"}.get(fp.suffix, "application/octet-stream")
-                return Response(fp.read_bytes(), media_type=ct)
-            return FileResponse(REACT_DIST / "index.html")
-        fp = STATIC_DIR / full_path if full_path else STATIC_DIR / "index.html"
+        fp = REACT_DIST / full_path if full_path else REACT_DIST / "index.html"
         if fp.is_file():
-            ct = mimetypes.guess_type(str(fp))[0] or "application/octet-stream"
+            ct = {".html": "text/html; charset=utf-8", ".js": "application/javascript",
+                  ".css": "text/css", ".svg": "image/svg+xml", ".woff2": "font/woff2"}.get(fp.suffix, "application/octet-stream")
             return Response(fp.read_bytes(), media_type=ct)
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(REACT_DIST / "index.html")
 
 
 def _import_bg():

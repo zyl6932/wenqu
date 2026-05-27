@@ -60,7 +60,6 @@ wenqu/
 │   ├── retrieve.py      # 混合检索（向量+BM25+RRF）
 │   └── storage.py       # SQLite 存储
 ├── frontend/src/        # React 前端源码
-├── static/index.html    # 原版前端（回退用）
 ├── static/dist/         # React 构建产物
 ├── tests/test_core.py   # 33 个测试用例
 ├── docs/                # 待导入文档

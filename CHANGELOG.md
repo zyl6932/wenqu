@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### 移除 (2026-05-27)
+- 移除原版 vanilla HTML 前端 (`static/index.html`)，仅保留 React 前端
+- 精简 SPA 路由回退逻辑，清理无用 `mimetypes` 导入和 `STATIC_DIR` 变量
+
 ### 修复 (2026-05-23)
 - **万级文档 P0 修复**：
   - 检索接入 VectorStore（numpy 批量 cosine），消除 `load_all_chunks()` 全量加载导致的 OOM
