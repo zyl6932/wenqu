@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### 修复 (2026-05-27)
+- **回车发送失效**：移除 `isComposing` state 检查（某些浏览器/输入法下卡住不复位），改用浏览器原生 `e.isComposing`
 - **双击发送竞态**：用 `stopRef` 同步守卫替代异步 `isStreaming` state，防止快速双击启动两个流导致消息错乱
 - **DocModal/ChunkModal 卸载后 setState**：fetch 回调加 `cancelled` flag，快速开关弹窗不再触发已卸载组件的状态更新
 - **消息 key 用 index**：改为唯一 `_id`，删除消息后 React 不再错认组件状态
