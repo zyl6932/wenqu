@@ -21,8 +21,13 @@ export default function App() {
   const { addToast } = useToast();
   const inputRef = useRef(null);
 
-  // 鼠标跟随光晕效果
+  // 鼠标跟随光晕效果（手机/平板自动禁用）
   useEffect(() => {
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      document.documentElement.classList.add('touch');
+      return;
+    }
     const onMove = (e) => {
       document.documentElement.style.setProperty('--mouse-x', (e.clientX / window.innerWidth * 100) + '%');
       document.documentElement.style.setProperty('--mouse-y', (e.clientY / window.innerHeight * 100) + '%');

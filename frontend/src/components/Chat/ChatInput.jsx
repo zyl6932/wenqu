@@ -71,7 +71,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, fillValue, inpu
         <textarea
           ref={textareaRef}
           rows="1"
-          placeholder="输入问题... (Enter 发送, Ctrl+K 聚焦)"
+          placeholder={window.innerWidth > 768 ? "输入问题... (Enter 发送, Ctrl+K 聚焦)" : "输入问题..."}
           value={value}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
